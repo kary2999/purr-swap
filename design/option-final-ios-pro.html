@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>USDT 换汇 · iOS Pro 全页面终稿</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: -apple-system, "SF Pro Text", "PingFang SC", sans-serif;
+  background: #d5dbe5;
+  padding: 32px;
+  color: #000;
+}
+
+/* === 标题 === */
+.title { font-size: 24px; font-weight: 700; margin-bottom: 6px; color: #007aff; }
+.tagline { color: #5c6680; font-size: 13px; margin-bottom: 32px; line-height: 1.6; max-width: 800px; }
+
+.grid { display: flex; gap: 18px; flex-wrap: wrap; }
+
+/* === 设备外壳 === */
+.phone {
+  width: 380px;
+  background: #f2f2f7;
+  border-radius: 36px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.04);
+  overflow: hidden;
+  border: 8px solid #1a1a1a;
+}
+.phone-label {
+  font-size: 12px;
+  color: #5c6680;
+  margin-bottom: 6px;
+  text-align: center;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* === iOS Status Bar === */
+.status {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 26px 4px;
+  font-size: 14px; font-weight: 600; color: #000;
+}
+.status .right { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+
+/* === Large Title 导航 === */
+.nav-large {
+  padding: 0 18px 8px;
+  background: #f2f2f7;
+}
+.nav-large h1 {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  color: #000;
+  margin-top: 4px;
+}
+.nav-meta {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 0;
+  min-height: 32px;
+}
+.nav-meta a, .nav-meta span.btn-link {
+  color: #007aff;
+  font-size: 16px;
+  cursor: pointer;
+}
+.nav-meta a.bold { font-weight: 600; }
+.nav-meta .actions { display: flex; gap: 14px; }
+
+/* === 实时报价 ticker (B 元素) === */
+.ticker-bar {
+  margin: -2px 16px 12px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-family: "SF Mono", "Menlo", monospace;
+  border: 1px solid rgba(60,60,67,0.08);
+}
+.ticker-bar .live::before {
+  content: "●";
+  color: #34c759;
+  margin-right: 4px;
+  animation: blink 2.5s infinite;
+}
+@keyframes blink { 50% { opacity: 0.4; } }
+.ticker-bar .pair { display: flex; align-items: center; gap: 4px; }
+.ticker-bar .pair .lbl { color: #8e8e93; }
+.ticker-bar .pair .v { color: #000; font-weight: 600; }
+.ticker-bar .pair .v.up { color: #34c759; }
+.ticker-bar .pair .v.dn { color: #ff3b30; }
+.ticker-bar .ts { color: #8e8e93; }
+
+/* === Hero 卡片 (输入区) === */
+.hero {
+  margin: 4px 16px 14px;
+  background: linear-gradient(135deg, #007aff, #0051d5);
+  border-radius: 16px;
+  padding: 16px 18px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.hero::after {
+  content: "";
+  position: absolute; right: -50px; top: -50px;
+  width: 160px; height: 160px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 50%;
+}
+.hero .lbl {
+  font-size: 12px;
+  opacity: 0.85;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.hero .val {
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: -1.5px;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+  font-family: "SF Pro Display", -apple-system;
+}
+.hero .unit { font-size: 18px; font-weight: 500; opacity: 0.7; margin-left: 6px; }
+.hero .presets { display: flex; gap: 6px; margin-top: 12px; position: relative; z-index: 1; }
+.hero .pp {
+  padding: 5px 12px;
+  background: rgba(255,255,255,0.18);
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.hero .pp.active { background: #fff; color: #007aff; }
+
+/* === Grouped Section === */
+.section { margin: 10px 16px 18px; }
+.section-header {
+  font-size: 13px;
+  color: #6c6c70;
+  padding: 0 14px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 500;
+}
+.section-footer { font-size: 12px; color: #8e8e93; padding: 6px 14px 0; line-height: 1.4; }
+.list {
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 0.5px solid rgba(60,60,67,0.08);
+}
+
+/* === 通用列表行 === */
+.row {
+  display: flex; align-items: center;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid rgba(60,60,67,0.10);
+  min-height: 48px;
+}
+.row:last-child { border-bottom: none; }
+.row .ico {
+  width: 30px; height: 30px;
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  margin-right: 14px;
+  color: #fff;
+  flex-shrink: 0;
+}
+.row .ico.violet { background: linear-gradient(135deg, #af52de, #5e5ce6); }
+.row .ico.red { background: linear-gradient(135deg, #ff3b30, #c93400); }
+.row .ico.green { background: linear-gradient(135deg, #34c759, #00a86b); }
+.row .ico.blue { background: linear-gradient(135deg, #007aff, #0051d5); }
+.row .ico.orange { background: linear-gradient(135deg, #ff9500, #ff6b00); }
+.row .ico.gray { background: linear-gradient(135deg, #8e8e93, #636366); }
+.row .ico.indigo { background: linear-gradient(135deg, #5856d6, #4036ad); }
+
+.row .label { flex: 1; font-size: 16px; color: #000; }
+.row .label .sub { font-size: 12px; color: #8e8e93; margin-top: 2px; line-height: 1.3; }
+.row .value { font-size: 16px; color: #8e8e93; font-variant-numeric: tabular-nums; }
+.row .chevron { color: #c7c7cc; font-size: 18px; margin-left: 8px; }
+
+/* === 预测渠道行 (融合 B 数据密度) === */
+.fc-row {
+  display: flex; align-items: center;
+  padding: 13px 14px;
+  border-bottom: 0.5px solid rgba(60,60,67,0.10);
+}
+.fc-row:last-child { border-bottom: none; }
+.fc-row .rank {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: rgba(118,118,128,0.16);
+  color: #8e8e93;
+  font-size: 12px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  display: flex; align-items: center; justify-content: center;
+  margin-right: 12px;
+  flex-shrink: 0;
+  font-family: "SF Mono", monospace;
+}
+.fc-row .rank.gold {
+  background: linear-gradient(135deg, #ffcc00, #ff9500);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(255,149,0,0.4);
+}
+.fc-row .info { flex: 1; min-width: 0; }
+.fc-row .info .n { font-size: 15px; color: #000; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; font-weight: 500; }
+.fc-row .info .meta { font-size: 11px; color: #8e8e93; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.fc-row .amt { text-align: right; }
+.fc-row .amt .v {
+  font-size: 17px;
+  font-weight: 600;
+  color: #000;
+  font-variant-numeric: tabular-nums;
+  font-family: "SF Mono", monospace;
+}
+.fc-row .amt .pct { font-size: 11px; margin-top: 2px; font-variant-numeric: tabular-nums; font-family: "SF Mono", monospace; }
+.pct-best { color: #34c759; font-weight: 700; }
+.pct-down { color: #ff3b30; }
+.pct-flat { color: #8e8e93; }
+
+/* 风险 badge */
+.badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.badge-low { background: rgba(52,199,89,0.16); color: #248a3d; }
+.badge-mid { background: rgba(255,149,0,0.16); color: #c93400; }
+.badge-high { background: rgba(255,59,48,0.16); color: #c91d14; }
+.badge-very-low { background: rgba(0,122,255,0.14); color: #0051d5; }
+
+/* === 表单行 === */
+.form-row {
+  display: flex; align-items: center;
+  padding: 13px 16px;
+  border-bottom: 0.5px solid rgba(60,60,67,0.10);
+  min-height: 48px;
+}
+.form-row:last-child { border-bottom: none; }
+.form-row .l { font-size: 15px; color: #000; }
+.form-row .v {
+  flex: 1; text-align: right;
+  font-size: 16px;
+  color: #007aff;
+  font-variant-numeric: tabular-nums;
+  font-family: "SF Mono", monospace;
+}
+.form-row .v.gray { color: #8e8e93; }
+.form-row .v.placeholder { color: #c7c7cc; font-family: -apple-system; }
+
+/* 按钮 */
+.btn {
+  margin: 16px;
+  padding: 14px;
+  background: #007aff;
+  color: #fff;
+  border-radius: 14px;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 600;
+}
+.btn.danger { background: #ff3b30; }
+
+/* === 汇损预览(交易终端风) === */
+.preview-banner {
+  margin: 0 16px 14px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px 16px;
+  border: 0.5px solid rgba(60,60,67,0.08);
+}
+.preview-banner .h {
+  display: flex; justify-content: space-between;
+  font-size: 11px; color: #8e8e93;
+  letter-spacing: 0.5px; text-transform: uppercase;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.preview-banner .h .live { display: flex; align-items: center; gap: 4px; }
+.preview-banner .h .live::before {
+  content: "●"; color: #34c759; animation: blink 2.5s infinite;
+}
+.preview-banner .grid2 {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  font-family: "SF Mono", monospace;
+  font-size: 11px;
+}
+.preview-banner .grid2 .row-pv {
+  display: flex; justify-content: space-between;
+}
+.preview-banner .grid2 .row-pv .lb { color: #8e8e93; }
+.preview-banner .grid2 .row-pv .vl { font-weight: 600; }
+.preview-banner .totals {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 0.5px solid rgba(60,60,67,0.10);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.preview-banner .totals .lt { font-size: 12px; color: #8e8e93; }
+.preview-banner .totals .vt {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ff3b30;
+  font-variant-numeric: tabular-nums;
+  font-family: "SF Mono", monospace;
+  letter-spacing: -0.5px;
+}
+.preview-banner .totals .vt.green { color: #34c759; }
+
+/* === 历史行 === */
+.h-row {
+  display: flex; align-items: center;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid rgba(60,60,67,0.10);
+}
+.h-row:last-child { border-bottom: none; }
+.h-row .h-icon {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  margin-right: 12px;
+  flex-shrink: 0;
+  color: #fff;
+}
+.h-row .h-icon.panda { background: linear-gradient(135deg, #ff9500, #ff6b00); }
+.h-row .h-icon.okx { background: linear-gradient(135deg, #2c2c2e, #1a1a1c); }
+.h-row .h-icon.binance { background: linear-gradient(135deg, #f0b90b, #b58000); }
+.h-row .h-icon.visa { background: linear-gradient(135deg, #5856d6, #af52de); }
+.h-row .h-icon.wise { background: linear-gradient(135deg, #34c759, #00a86b); }
+.h-row .h-icon.boc { background: linear-gradient(135deg, #ff3b30, #c93400); }
+.h-row .h-icon.jrf { background: linear-gradient(135deg, #af52de, #5e5ce6); }
+.h-row .h-icon.cash { background: linear-gradient(135deg, #8e8e93, #636366); }
+
+.h-row .info { flex: 1; min-width: 0; }
+.h-row .info .ttl {
+  font-size: 14px; color: #000;
+  font-variant-numeric: tabular-nums;
+  font-family: "SF Mono", monospace;
+}
+.h-row .info .sub {
+  font-size: 11px; color: #8e8e93;
+  margin-top: 2px;
+  display: flex; align-items: center; gap: 4px;
+}
+.h-row .info .sub .ch-pill {
+  display: inline-block; padding: 0 5px;
+  background: rgba(0,122,255,0.10); border-radius: 3px;
+  color: #007aff; font-weight: 600;
+  font-size: 10px;
+}
+.h-row .amt { text-align: right; }
+.h-row .amt .v {
+  font-size: 14px; font-weight: 600;
+  color: #ff3b30;
+  font-variant-numeric: tabular-nums;
+  font-family: "SF Mono", monospace;
+}
+.h-row .amt .v.green { color: #34c759; }
+.h-row .amt .pct { font-size: 11px; color: #8e8e93; margin-top: 2px; font-family: "SF Mono", monospace; }
+
+/* === KPI 卡 === */
+.kpi-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px; margin: 0 16px 14px;
+}
+.kpi {
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px;
+  border: 0.5px solid rgba(60,60,67,0.08);
+  position: relative;
+}
+.kpi .h {
+  font-size: 11px; color: #8e8e93;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.kpi .v {
+  font-size: 24px; font-weight: 700;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+  font-family: "SF Pro Display", -apple-system;
+  letter-spacing: -0.8px;
+}
+.kpi .v.red { color: #ff3b30; }
+.kpi .v.green { color: #34c759; }
+.kpi .v.blue { color: #007aff; }
+.kpi .s { font-size: 11px; color: #8e8e93; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.kpi .arrow { position: absolute; top: 10px; right: 12px; font-size: 11px; }
+
+/* === 柱状图卡 === */
+.chart-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 0 16px 14px;
+  border: 0.5px solid rgba(60,60,67,0.08);
+}
+.chart-card .h {
+  display: flex; justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+.chart-card .h .ttl { font-size: 13px; color: #000; font-weight: 600; }
+.chart-card .h .total {
+  font-size: 16px; color: #007aff; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-family: "SF Mono", monospace;
+}
+.chart-card .h .total.red { color: #ff3b30; }
+.chart-card .sub {
+  font-size: 11px; color: #8e8e93;
+  margin-top: -8px; margin-bottom: 12px;
+}
+.bar-row {
+  display: grid; grid-template-columns: 30px 1fr 70px;
+  align-items: center; margin-bottom: 8px;
+  gap: 10px; font-size: 12px;
+}
+.bar-row .lbl { color: #8e8e93; font-variant-numeric: tabular-nums; }
+.bar-row .track {
+  height: 16px;
+  background: rgba(118,118,128,0.10);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.bar-row .fill {
+  height: 100%;
+  background: linear-gradient(90deg, #007aff, #0051d5);
+  border-radius: 8px;
+}
+.bar-row .fill.red { background: linear-gradient(90deg, #ff3b30, #c93400); }
+.bar-row .fill.green { background: linear-gradient(90deg, #34c759, #00a86b); }
+.bar-row .v {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: "SF Mono", monospace;
+  font-weight: 600;
+  color: #000;
+}
+
+/* === 指南 tab 滑动条 === */
+.seg-tabs {
+  display: flex;
+  background: rgba(118,118,128,0.10);
+  border-radius: 9px;
+  padding: 2px;
+  margin: 0 16px 14px;
+}
+.seg-tab {
+  flex: 1; text-align: center;
+  padding: 6px 0;
+  font-size: 13px; font-weight: 500;
+  color: #000;
+  border-radius: 7px;
+}
+.seg-tab.active {
+  background: #fff;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+/* 步骤卡 */
+.step-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 0 16px 10px;
+  border: 0.5px solid rgba(60,60,67,0.08);
+}
+.step-card .step-h {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 6px;
+}
+.step-card .step-num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #007aff;
+  color: #fff;
+  font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.step-card .step-h .ttl {
+  font-size: 14px; font-weight: 600; color: #000;
+}
+.step-card .step-body {
+  font-size: 13px; color: #3c3c43;
+  line-height: 1.5;
+  padding-left: 32px;
+}
+.step-card .copy-row {
+  display: flex; justify-content: space-between;
+  background: rgba(0,122,255,0.08);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  margin-left: 32px;
+  font-family: "SF Mono", monospace;
+  font-size: 12px;
+}
+.step-card .copy-row .k { color: #8e8e93; }
+.step-card .copy-row .v { color: #007aff; font-weight: 600; }
+.step-card .warn {
+  background: rgba(255,59,48,0.08);
+  border-left: 3px solid #ff3b30;
+  padding: 6px 10px;
+  margin-top: 8px;
+  margin-left: 32px;
+  border-radius: 0 6px 6px 0;
+  font-size: 11px; color: #c91d14;
+  line-height: 1.4;
+}
+
+/* === 设置项链接 === */
+.setting-tile {
+  background: #fff;
+  border-radius: 14px;
+  margin: 0 16px 10px;
+  border: 0.5px solid rgba(60,60,67,0.08);
+  overflow: hidden;
+}
+
+/* === 底部 tab bar(磨砂玻璃)=== */
+.tabbar {
+  display: flex;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 0.5px solid rgba(60,60,67,0.18);
+  padding: 6px 0 24px;
+}
+.tab {
+  flex: 1; text-align: center;
+}
+.tab .ic { font-size: 22px; color: #8e8e93; }
+.tab .lb { font-size: 10px; color: #8e8e93; margin-top: 1px; font-weight: 500; }
+.tab.active .ic, .tab.active .lb { color: #007aff; }
+
+/* 月份 sticky header */
+.month-sticky {
+  background: #f2f2f7;
+  padding: 6px 16px;
+  font-size: 12px;
+  color: #6c6c70;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-top: 4px;
+}
+</style>
+</head>
+<body>
+
+<div class="title">USDT 换汇 · iOS Pro 全页面终稿</div>
+<div class="tagline">
+  iOS 18 Settings 底盘 + Trading Terminal 数据密度。系统蓝渐变 hero + grouped lists + 顶部实时报价 ticker + 等宽数字 + 绿/红 delta。<br>
+  覆盖 6 个页面:预测 · 记一笔 · 历史 · 统计 · 指南 · 设置。
+</div>
+
+<div class="grid">
+
+  <!-- ============ 1. 预测 ============ -->
+  <div>
+    <div class="phone-label">⭐ 预测</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span class="right">📶 100%</span></div>
+      <div class="nav-large">
+        <div class="nav-meta"><span></span><div class="actions"><a>↻</a></div></div>
+        <h1>预测到账</h1>
+      </div>
+
+      <div class="ticker-bar">
+        <span class="live"></span>
+        <div class="pair"><span class="lbl">USD/CNY</span><span class="v">7.0820</span></div>
+        <div class="pair"><span class="lbl">USDT/CNY</span><span class="v up">6.8430</span></div>
+        <div class="pair"><span class="lbl">JPY/CNY</span><span class="v">0.0429</span></div>
+        <span class="ts">14:30:08</span>
+      </div>
+
+      <div class="hero">
+        <div class="lbl">USDT INPUT</div>
+        <div class="val">1,000<span class="unit">USDT</span></div>
+        <div class="presets">
+          <span class="pp">100</span>
+          <span class="pp">500</span>
+          <span class="pp active">1,000</span>
+          <span class="pp">5,000</span>
+          <span class="pp">10K</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">渠道排名 · 7</div>
+        <div class="list">
+          <div class="fc-row">
+            <div class="rank gold">01</div>
+            <div class="info">
+              <div class="n">OKX OTC <span class="badge badge-high">高</span></div>
+              <div class="meta">C2C 订单簿 · 8 样本</div>
+            </div>
+            <div class="amt"><div class="v">¥6,830.00</div><div class="pct pct-best">★ 最优</div></div>
+          </div>
+          <div class="fc-row">
+            <div class="rank">02</div>
+            <div class="info">
+              <div class="n">Binance 蓝钻 <span class="badge badge-high">高</span></div>
+              <div class="meta">10 样本 · 蓝钻 + 大宗</div>
+            </div>
+            <div class="amt"><div class="v">¥6,830.00</div><div class="pct pct-flat">0.00%</div></div>
+          </div>
+          <div class="fc-row">
+            <div class="rank">03</div>
+            <div class="info">
+              <div class="n">线下人民币 <span class="badge badge-mid">中</span></div>
+              <div class="meta">朋友直接打款</div>
+            </div>
+            <div class="amt"><div class="v">¥6,816.25</div><div class="pct pct-down">−0.20%</div></div>
+          </div>
+          <div class="fc-row">
+            <div class="rank">04</div>
+            <div class="info">
+              <div class="n">JRF Wallet <span class="badge badge-low">低</span></div>
+              <div class="meta">¥1,000/笔 · 多笔小额</div>
+            </div>
+            <div class="amt"><div class="v">¥6,738.90</div><div class="pct pct-down">−1.34%</div></div>
+          </div>
+          <div class="fc-row">
+            <div class="rank">05</div>
+            <div class="info">
+              <div class="n">Wise (JPY) <span class="badge badge-low">低</span></div>
+              <div class="meta">非国内 · 风控严</div>
+            </div>
+            <div class="amt"><div class="v">¥6,734.48</div><div class="pct pct-down">−1.40%</div></div>
+          </div>
+          <div class="fc-row">
+            <div class="rank">06</div>
+            <div class="info">
+              <div class="n">熊猫速汇 <span class="badge badge-low">低</span></div>
+              <div class="meta">¥800/笔 · 国内团队 · 仅微信支付宝</div>
+            </div>
+            <div class="amt"><div class="v">¥6,727.46</div><div class="pct pct-down">−1.50%</div></div>
+          </div>
+          <div class="fc-row">
+            <div class="rank">07</div>
+            <div class="info">
+              <div class="n">中国银行(日本) <span class="badge badge-very-low">极低</span></div>
+              <div class="meta">¥6,000/笔 · 大额才划算</div>
+            </div>
+            <div class="amt"><div class="v">¥6,514.70</div><div class="pct pct-down">−4.62%</div></div>
+          </div>
+        </div>
+        <div class="section-footer">汇率 28 秒前更新 · 下拉刷新</div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">风险排名(由低到高)</div>
+        <div class="list">
+          <div class="row">
+            <div class="ico blue">🛡</div>
+            <div class="label">中行(日本)<div class="sub">合规合法 · 需柜台 + 国内中行账户</div></div>
+            <span class="badge badge-very-low">极低</span><span class="chevron">›</span>
+          </div>
+          <div class="row">
+            <div class="ico green">✓</div>
+            <div class="label">熊猫 / Wise / JRF<div class="sub">日本金融厅注册 · 收款仅微信支付宝</div></div>
+            <span class="badge badge-low">低</span><span class="chevron">›</span>
+          </div>
+          <div class="row">
+            <div class="ico orange">⚠</div>
+            <div class="label">Visa U 卡 / 线下<div class="sub">监管灰区 · 无法证明收入来源</div></div>
+            <span class="badge badge-mid">中</span><span class="chevron">›</span>
+          </div>
+          <div class="row">
+            <div class="ico red">!</div>
+            <div class="label">Binance / OKX OTC<div class="sub">冻卡风险 +300% · 个人卡可能被定为涉案</div></div>
+            <span class="badge badge-high">高</span><span class="chevron">›</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabbar">
+        <div class="tab active"><div class="ic">✦</div><div class="lb">预测</div></div>
+        <div class="tab"><div class="ic">＋</div><div class="lb">记一笔</div></div>
+        <div class="tab"><div class="ic">⌚</div><div class="lb">历史</div></div>
+        <div class="tab"><div class="ic">▤</div><div class="lb">统计</div></div>
+        <div class="tab"><div class="ic">☰</div><div class="lb">指南</div></div>
+        <div class="tab"><div class="ic">⚙</div><div class="lb">设置</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 2. 记一笔 ============ -->
+  <div>
+    <div class="phone-label">＋ 记一笔</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span class="right">📶 100%</span></div>
+      <div class="nav-large">
+        <div class="nav-meta"><a>取消</a><div class="actions"><a class="bold">保存</a></div></div>
+        <h1>新记录</h1>
+      </div>
+
+      <div class="ticker-bar">
+        <span class="live"></span>
+        <div class="pair"><span class="lbl">基准:Wise USD/JPY</span><span class="v">158.71</span></div>
+        <div class="pair"><span class="lbl">JPY/CNY</span><span class="v">0.0429</span></div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">交易信息</div>
+        <div class="list">
+          <div class="form-row">
+            <span class="l">渠道</span>
+            <span class="v">熊猫速汇 (JPY) <span style="color:#c7c7cc;">›</span></span>
+          </div>
+          <div class="form-row">
+            <span class="l">收款人</span>
+            <span class="v">本人 <span style="color:#c7c7cc;">›</span></span>
+          </div>
+          <div class="form-row">
+            <span class="l">日期时间</span>
+            <span class="v">04月22日 14:30 <span style="color:#c7c7cc;">›</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">金额</div>
+        <div class="list">
+          <div class="form-row">
+            <span class="l">USDT 投入</span>
+            <span class="v">1,000.00</span>
+          </div>
+          <div class="form-row">
+            <span class="l">中转 JPY</span>
+            <span class="v">158,700</span>
+          </div>
+          <div class="form-row">
+            <span class="l">实收 CNY</span>
+            <span class="v">¥6,720.00</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">备注</div>
+        <div class="list">
+          <div class="form-row">
+            <span class="v gray placeholder" style="text-align:left; flex:1;">3月工资</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="preview-banner">
+        <div class="h"><span>实时损耗预览</span><span class="live">LIVE</span></div>
+        <div class="grid2">
+          <div class="row-pv"><span class="lb">段① USDT→JPY</span><span class="vl">158.70</span></div>
+          <div class="row-pv"><span class="lb">vs Wise</span><span class="vl pct-down" style="color:#ff3b30;">−0.01%</span></div>
+          <div class="row-pv"><span class="lb">段② JPY→CNY</span><span class="vl">0.04234</span></div>
+          <div class="row-pv"><span class="lb">vs Wise</span><span class="vl pct-down" style="color:#ff3b30;">−1.36%</span></div>
+        </div>
+        <div class="totals">
+          <div>
+            <div class="lt">本笔汇损 / 预期 ¥6,827.34</div>
+            <div class="vt">−¥107.34 (−1.57%)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">本月额度 · 熊猫速汇</div>
+        <div class="list">
+          <div style="padding: 12px 16px;">
+            <div style="display:flex; justify-content:space-between; font-size:12px; color:#8e8e93; margin-bottom:6px;">
+              <span>本月已用</span>
+              <span style="font-family:'SF Mono',monospace; color:#000;">98 万 / 300 万 JPY</span>
+            </div>
+            <div style="height:6px; background:rgba(118,118,128,0.12); border-radius:3px; overflow:hidden;">
+              <div style="width:33%; height:100%; background:#34c759; border-radius:3px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn">保存记录</div>
+
+      <div class="tabbar">
+        <div class="tab"><div class="ic">✦</div><div class="lb">预测</div></div>
+        <div class="tab active"><div class="ic">＋</div><div class="lb">记一笔</div></div>
+        <div class="tab"><div class="ic">⌚</div><div class="lb">历史</div></div>
+        <div class="tab"><div class="ic">▤</div><div class="lb">统计</div></div>
+        <div class="tab"><div class="ic">☰</div><div class="lb">指南</div></div>
+        <div class="tab"><div class="ic">⚙</div><div class="lb">设置</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 3. 历史 ============ -->
+  <div>
+    <div class="phone-label">⌚ 历史</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span class="right">📶 100%</span></div>
+      <div class="nav-large">
+        <div class="nav-meta"><span></span><div class="actions"><a>筛选</a><a>编辑</a></div></div>
+        <h1>历史</h1>
+      </div>
+
+      <div class="ticker-bar">
+        <span class="live"></span>
+        <div class="pair"><span class="lbl">∑ USDT</span><span class="v">94,104</span></div>
+        <div class="pair"><span class="lbl">∑ CNY</span><span class="v">¥625,675</span></div>
+        <div class="pair"><span class="lbl">∑ 汇损</span><span class="v dn">−¥39,204</span></div>
+      </div>
+
+      <div class="month-sticky">2026 年 4 月 · 19 笔</div>
+      <div class="section" style="margin-top:0;">
+        <div class="list">
+          <div class="h-row">
+            <div class="h-icon panda">🐼</div>
+            <div class="info">
+              <div class="ttl">1,000 USDT → ¥6,720.00</div>
+              <div class="sub"><span class="ch-pill">熊猫</span>04-22 14:30 → 本人</div>
+            </div>
+            <div class="amt"><div class="v">−¥107</div><div class="pct">−1.57%</div></div>
+          </div>
+          <div class="h-row">
+            <div class="h-icon okx">⚫</div>
+            <div class="info">
+              <div class="ttl">500 USDT → ¥3,420.00</div>
+              <div class="sub"><span class="ch-pill">OKX</span>04-21 09:12 → 本人</div>
+            </div>
+            <div class="amt"><div class="v green">+¥18</div><div class="pct" style="color:#34c759;">+0.05%</div></div>
+          </div>
+          <div class="h-row">
+            <div class="h-icon visa">💳</div>
+            <div class="info">
+              <div class="ttl">200 USDT → ¥1,355.00</div>
+              <div class="sub"><span class="ch-pill">Visa</span>04-19 18:45 → 本人</div>
+            </div>
+            <div class="amt"><div class="v">−¥28</div><div class="pct">−2.06%</div></div>
+          </div>
+          <div class="h-row">
+            <div class="h-icon wise">🌐</div>
+            <div class="info">
+              <div class="ttl">800 USDT → ¥5,398.00</div>
+              <div class="sub"><span class="ch-pill">Wise</span>04-15 11:20 → 配偶</div>
+            </div>
+            <div class="amt"><div class="v">−¥75</div><div class="pct">−1.39%</div></div>
+          </div>
+          <div class="h-row">
+            <div class="h-icon boc">🏦</div>
+            <div class="info">
+              <div class="ttl">2,000 USDT → ¥13,490.00</div>
+              <div class="sub"><span class="ch-pill">中行</span>04-10 16:00 → 父</div>
+            </div>
+            <div class="amt"><div class="v">−¥124</div><div class="pct">−0.92%</div></div>
+          </div>
+          <div class="h-row">
+            <div class="h-icon jrf">🎴</div>
+            <div class="info">
+              <div class="ttl">1,500 USDT → ¥10,240.00</div>
+              <div class="sub"><span class="ch-pill">JRF</span>04-05 09:30 → 本人</div>
+            </div>
+            <div class="amt"><div class="v">−¥142</div><div class="pct">−1.38%</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="month-sticky">2026 年 3 月 · 27 笔</div>
+      <div class="section" style="margin-top:0;">
+        <div class="list">
+          <div class="h-row">
+            <div class="h-icon panda">🐼</div>
+            <div class="info">
+              <div class="ttl">1,300 USDT → ¥9,150.00</div>
+              <div class="sub"><span class="ch-pill">熊猫</span>03-28 11:00 → 本人</div>
+            </div>
+            <div class="amt"><div class="v">−¥168</div><div class="pct">−1.81%</div></div>
+          </div>
+          <div class="h-row">
+            <div class="h-icon binance">💎</div>
+            <div class="info">
+              <div class="ttl">1,000 USDT → ¥7,180.00</div>
+              <div class="sub"><span class="ch-pill">币安</span>03-20 11:20 → 本人</div>
+            </div>
+            <div class="amt"><div class="v">−¥63</div><div class="pct">−0.87%</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabbar">
+        <div class="tab"><div class="ic">✦</div><div class="lb">预测</div></div>
+        <div class="tab"><div class="ic">＋</div><div class="lb">记一笔</div></div>
+        <div class="tab active"><div class="ic">⌚</div><div class="lb">历史</div></div>
+        <div class="tab"><div class="ic">▤</div><div class="lb">统计</div></div>
+        <div class="tab"><div class="ic">☰</div><div class="lb">指南</div></div>
+        <div class="tab"><div class="ic">⚙</div><div class="lb">设置</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 4. 统计 ============ -->
+  <div>
+    <div class="phone-label">▤ 统计</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span class="right">📶 100%</span></div>
+      <div class="nav-large">
+        <div class="nav-meta"><a>本月 ›</a><div class="actions"><a>↻</a></div></div>
+        <h1>统计</h1>
+      </div>
+
+      <div class="ticker-bar">
+        <span class="live"></span>
+        <div class="pair"><span class="lbl">2026-Q1 → 4月</span><span class="v">100 笔</span></div>
+        <div class="pair"><span class="lbl">总额</span><span class="v">¥625,675</span></div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="h">累计换汇</div>
+          <div class="v blue">¥625,675</div>
+          <div class="s">94,104 USDT</div>
+          <div class="arrow" style="color:#34c759;">▲</div>
+        </div>
+        <div class="kpi">
+          <div class="h">总汇损</div>
+          <div class="v red">−¥39,204</div>
+          <div class="s">平均 −6.28%</div>
+          <div class="arrow" style="color:#ff3b30;">▼</div>
+        </div>
+        <div class="kpi">
+          <div class="h">最优渠道</div>
+          <div class="v" style="font-size:18px;">OKX OTC</div>
+          <div class="s">+0.05% 平均</div>
+        </div>
+        <div class="kpi">
+          <div class="h">最差渠道</div>
+          <div class="v red" style="font-size:18px;">中行(日本)</div>
+          <div class="s">−4.62% 平均</div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="h">
+          <div class="ttl">月度出金</div>
+          <div class="total">∑ ¥626k</div>
+        </div>
+        <div class="sub">USDT 投入 → CNY 到手</div>
+        <div class="bar-row"><div class="lbl">1月</div><div class="track"><div class="fill" style="width:70%;"></div></div><div class="v">¥182k</div></div>
+        <div class="bar-row"><div class="lbl">2月</div><div class="track"><div class="fill" style="width:55%;"></div></div><div class="v">¥158k</div></div>
+        <div class="bar-row"><div class="lbl">3月</div><div class="track"><div class="fill" style="width:80%;"></div></div><div class="v">¥175k</div></div>
+        <div class="bar-row"><div class="lbl">4月</div><div class="track"><div class="fill" style="width:45%;"></div></div><div class="v">¥111k</div></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="h">
+          <div class="ttl">月度汇损</div>
+          <div class="total red">−¥39k</div>
+        </div>
+        <div class="sub">vs Wise 中间价</div>
+        <div class="bar-row"><div class="lbl">1月</div><div class="track"><div class="fill red" style="width:65%;"></div></div><div class="v" style="color:#ff3b30;">−¥9.8k</div></div>
+        <div class="bar-row"><div class="lbl">2月</div><div class="track"><div class="fill red" style="width:50%;"></div></div><div class="v" style="color:#ff3b30;">−¥7.5k</div></div>
+        <div class="bar-row"><div class="lbl">3月</div><div class="track"><div class="fill red" style="width:85%;"></div></div><div class="v" style="color:#ff3b30;">−¥13k</div></div>
+        <div class="bar-row"><div class="lbl">4月</div><div class="track"><div class="fill red" style="width:55%;"></div></div><div class="v" style="color:#ff3b30;">−¥8.9k</div></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="h">
+          <div class="ttl">各渠道平均汇损 %</div>
+          <div class="total" style="font-size:11px; color:#8e8e93;">长按查看明细</div>
+        </div>
+        <div class="bar-row"><div class="lbl">OKX</div><div class="track"><div class="fill green" style="width:5%;"></div></div><div class="v" style="color:#34c759;">+0.05%</div></div>
+        <div class="bar-row"><div class="lbl">币安</div><div class="track"><div class="fill red" style="width:8%;"></div></div><div class="v" style="color:#ff3b30;">−0.42%</div></div>
+        <div class="bar-row"><div class="lbl">线下</div><div class="track"><div class="fill red" style="width:14%;"></div></div><div class="v" style="color:#ff3b30;">−0.78%</div></div>
+        <div class="bar-row"><div class="lbl">JRF</div><div class="track"><div class="fill red" style="width:30%;"></div></div><div class="v" style="color:#ff3b30;">−1.34%</div></div>
+        <div class="bar-row"><div class="lbl">Wise</div><div class="track"><div class="fill red" style="width:31%;"></div></div><div class="v" style="color:#ff3b30;">−1.40%</div></div>
+        <div class="bar-row"><div class="lbl">熊猫</div><div class="track"><div class="fill red" style="width:33%;"></div></div><div class="v" style="color:#ff3b30;">−1.50%</div></div>
+        <div class="bar-row"><div class="lbl">Visa</div><div class="track"><div class="fill red" style="width:46%;"></div></div><div class="v" style="color:#ff3b30;">−2.06%</div></div>
+        <div class="bar-row"><div class="lbl">中行</div><div class="track"><div class="fill red" style="width:100%;"></div></div><div class="v" style="color:#ff3b30;">−4.62%</div></div>
+      </div>
+
+      <div class="tabbar">
+        <div class="tab"><div class="ic">✦</div><div class="lb">预测</div></div>
+        <div class="tab"><div class="ic">＋</div><div class="lb">记一笔</div></div>
+        <div class="tab"><div class="ic">⌚</div><div class="lb">历史</div></div>
+        <div class="tab active"><div class="ic">▤</div><div class="lb">统计</div></div>
+        <div class="tab"><div class="ic">☰</div><div class="lb">指南</div></div>
+        <div class="tab"><div class="ic">⚙</div><div class="lb">设置</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 5. 指南 ============ -->
+  <div>
+    <div class="phone-label">☰ 指南</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span class="right">📶 100%</span></div>
+      <div class="nav-large">
+        <div class="nav-meta"><span></span><div class="actions"><a>↗ 下载 App</a></div></div>
+        <h1>汇款指南</h1>
+      </div>
+
+      <div class="seg-tabs">
+        <div class="seg-tab">熊猫</div>
+        <div class="seg-tab active">Wise</div>
+        <div class="seg-tab">JRF</div>
+        <div class="seg-tab">中行</div>
+      </div>
+
+      <div class="section" style="margin-top:0;">
+        <div class="list">
+          <div class="row">
+            <div class="ico violet">🌐</div>
+            <div class="label">Wise (PayPay 银行)
+              <div class="sub">英国/欧盟牌照 · 风控严 · 退款慢</div>
+            </div>
+            <span class="badge badge-low">低风险</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">费用构成</div>
+        <div class="list">
+          <div class="form-row">
+            <span class="l">平台手续费</span>
+            <span class="v gray">¥350 JPY/笔</span>
+          </div>
+          <div class="form-row">
+            <span class="l">点差(vs mid)</span>
+            <span class="v gray">~0.44%</span>
+          </div>
+          <div class="form-row">
+            <span class="l">ATM 振込费</span>
+            <span class="v gray">+¥440 JPY (他行)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header" style="margin-left:16px;">操作步骤 · 8 步</div>
+
+      <div class="step-card">
+        <div class="step-h">
+          <div class="step-num">1</div>
+          <div class="ttl">Wise App 创建汇款</div>
+        </div>
+        <div class="step-body">
+          金额 → 收款方 → 付款方式选"银行转账"。Wise 会给一个 <b>PayPay 银行</b> 收款账号。
+        </div>
+        <div class="copy-row">
+          <span class="k">收款银行</span>
+          <span class="v">PayPay 銀行</span>
+        </div>
+        <div class="copy-row">
+          <span class="k">支店名</span>
+          <span class="v">ツツジ支店</span>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-h">
+          <div class="step-num">2</div>
+          <div class="ttl">去 ATM · 选「他の金融機関へ」</div>
+        </div>
+        <div class="step-body">
+          JP Bank / Seven Bank / MUFG ATM 都行。PayPay 不在常用列表,<b>翻到「その他」</b>(最后一页)。
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-h">
+          <div class="step-num">3</div>
+          <div class="ttl">片假名键盘选首字 ツ</div>
+        </div>
+        <div class="step-body">
+          按 <b>ツ</b>。进入下一步支店名選択。
+        </div>
+        <div class="warn">屏幕标题是「支店名の選択」,不是「金融機関名の選択」。别选错页。</div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-h">
+          <div class="step-num">4</div>
+          <div class="ttl">ご確認 · 比对一切</div>
+        </div>
+        <div class="step-body">
+          ATM 显示 金融機関 / 支店 / 口座 / 金額 / 收款人 → <b>必须和 Wise App 显示完全一致</b> 才按確認。
+        </div>
+        <div class="warn">差 1 日元都会风控。看到 +220 JPY 是 ATM 手续费,不是金额错。</div>
+      </div>
+
+      <div class="tabbar">
+        <div class="tab"><div class="ic">✦</div><div class="lb">预测</div></div>
+        <div class="tab"><div class="ic">＋</div><div class="lb">记一笔</div></div>
+        <div class="tab"><div class="ic">⌚</div><div class="lb">历史</div></div>
+        <div class="tab"><div class="ic">▤</div><div class="lb">统计</div></div>
+        <div class="tab active"><div class="ic">☰</div><div class="lb">指南</div></div>
+        <div class="tab"><div class="ic">⚙</div><div class="lb">设置</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 6. 设置 ============ -->
+  <div>
+    <div class="phone-label">⚙ 设置</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span class="right">📶 100%</span></div>
+      <div class="nav-large">
+        <div class="nav-meta"><span></span><div class="actions"><a>v0.1.1</a></div></div>
+        <h1>设置</h1>
+      </div>
+
+      <div class="section">
+        <div class="section-header">数据源</div>
+        <div class="list">
+          <div class="row">
+            <div class="ico blue">🌐</div>
+            <div class="label">实时汇率
+              <div class="sub">Wise / Binance / OKX / Visa / 熊猫 / 中行 / 7Bank</div>
+            </div>
+            <span class="value">8 源</span>
+            <span class="chevron">›</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">数据管理</div>
+        <div class="list">
+          <div class="row">
+            <div class="ico violet">✦</div>
+            <div class="label">加载示例数据
+              <div class="sub">追加 100 条 2026 年 1-4 月记录</div>
+            </div>
+            <span class="chevron">›</span>
+          </div>
+          <div class="row">
+            <div class="ico green">↓</div>
+            <div class="label">导出 JSON 备份
+              <div class="sub">复制到剪贴板</div>
+            </div>
+            <span class="chevron">›</span>
+          </div>
+          <div class="row">
+            <div class="ico orange">↑</div>
+            <div class="label">从文本导入
+              <div class="sub">粘贴之前导出的 JSON</div>
+            </div>
+            <span class="chevron">›</span>
+          </div>
+          <div class="row">
+            <div class="ico red">⊗</div>
+            <div class="label" style="color:#ff3b30;">清空全部数据
+              <div class="sub" style="color:#8e8e93;">不可恢复</div>
+            </div>
+            <span class="chevron">›</span>
+          </div>
+        </div>
+        <div class="section-footer">所有数据仅本地。卸载即清空。建议定期导出备份。</div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">Visa 卡费率</div>
+        <div class="list">
+          <div class="form-row">
+            <span class="l">点差</span>
+            <span class="v gray">0.6%</span>
+          </div>
+          <div class="form-row">
+            <span class="l">ATM 手续费</span>
+            <span class="v gray">¥15 / 笔</span>
+          </div>
+        </div>
+        <div class="section-footer">默认费率 · 点击修改</div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">关于</div>
+        <div class="list">
+          <div class="row">
+            <div class="ico gray">ⓘ</div>
+            <div class="label">版本</div>
+            <span class="value">v0.1.1</span>
+          </div>
+          <div class="row">
+            <div class="ico gray">📄</div>
+            <div class="label">使用手册</div>
+            <span class="chevron">›</span>
+          </div>
+          <div class="row">
+            <div class="ico gray">⚖</div>
+            <div class="label">法律 · 免责声明</div>
+            <span class="chevron">›</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabbar">
+        <div class="tab"><div class="ic">✦</div><div class="lb">预测</div></div>
+        <div class="tab"><div class="ic">＋</div><div class="lb">记一笔</div></div>
+        <div class="tab"><div class="ic">⌚</div><div class="lb">历史</div></div>
+        <div class="tab"><div class="ic">▤</div><div class="lb">统计</div></div>
+        <div class="tab"><div class="ic">☰</div><div class="lb">指南</div></div>
+        <div class="tab active"><div class="ic">⚙</div><div class="lb">设置</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

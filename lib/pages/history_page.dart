@@ -1,0 +1,466 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../models/exchange_record.dart';
+import '../storage/local_store.dart';
+import '../theme/ios_theme.dart';
+import '../widgets/ios_widgets.dart';
+
+class HistoryPage extends StatefulWidget {
+  const HistoryPage({super.key});
+  @override
+  State<HistoryPage> createState() => _HistoryPageState();
+}
+
+class _HistoryPageState extends State<HistoryPage> {
+  List<ExchangeRecord> _records = [];
+  String _filter = '全部';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final store = await LocalStore.instance;
+    final rs = await store.loadRecords();
+    setState(() => _records = rs);
+  }
+
+  Future<void> _delete(ExchangeRecord r) async {
+    final store = await LocalStore.instance;
+    await store.deleteRecord(r.id);
+    await _load();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已删除'), duration: Duration(seconds: 1)));
+    }
+  }
+
+  Future<void> _edit(ExchangeRecord r) async {
+    final updated = await showDialog<ExchangeRecord>(
+      context: context,
+      builder: (_) => _EditDialog(record: r),
+    );
+    if (updated == null) return;
+    final store = await LocalStore.instance;
+    final all = await store.loadRecords();
+    final i = all.indexWhere((x) => x.id == r.id);
+    if (i >= 0) {
+      all[i] = updated;
+      await store.saveRecords(all);
+    }
+    await _load();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已更新'), duration: Duration(seconds: 1)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext c) {
+    final shown = _filter == '全部'
+        ? _records
+        : _records.where((r) => r.channel == _filter).toList();
+    final totalCost = shown.fold<double>(0, (s, r) => s + r.costVsReference);
+    final totalUsdt = shown.fold<double>(0, (s, r) => s + r.usdtAmount);
+    final totalCny = shown.fold<double>(0, (s, r) => s + r.cnyReceived);
+
+    // 按月分组 (yyyy-MM)
+    final byMonth = <String, List<ExchangeRecord>>{};
+    for (final r in shown) {
+      final k = DateFormat('yyyy-MM').format(r.at);
+      byMonth.putIfAbsent(k, () => []).add(r);
+    }
+    final sortedMonths = byMonth.keys.toList()..sort((a, b) => b.compareTo(a));
+
+    return Scaffold(
+      backgroundColor: IOS.grayBg,
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            IOSLargeTitle(
+              title: '历史',
+              actions: [
+                IOSNavLink('筛选', onTap: _showFilter),
+                IOSNavIcon(Icons.refresh, onTap: _load),
+              ],
+            ),
+            IOSTickerBar(items: [
+              TickerItem('∑ USDT', NumberFormat('#,##0').format(totalUsdt)),
+              TickerItem('∑ CNY', '¥${NumberFormat('#,##0').format(totalCny)}'),
+              TickerItem(
+                '∑ 汇损',
+                '${totalCost >= 0 ? "−" : "+"}¥${NumberFormat('#,##0').format(totalCost.abs())}',
+                totalCost >= 0 ? TickerColor.down : TickerColor.up,
+              ),
+            ]),
+            if (shown.isEmpty)
+              _emptyState()
+            else ...[
+              for (final m in sortedMonths) ...[
+                _monthHeader(m, byMonth[m]!.length),
+                _monthSection(byMonth[m]!),
+              ],
+            ],
+            const SizedBox(height: 60),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _monthHeader(String m, int count) {
+    final parts = m.split('-');
+    return MonthHeader('${parts[0]} 年 ${int.parse(parts[1])} 月 · $count 笔');
+  }
+
+  Widget _monthSection(List<ExchangeRecord> rs) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(IOS.radCard),
+        border: Border.all(color: IOS.separator, width: 0.5),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(IOS.radCard),
+        child: Column(
+          children: [
+            for (int i = 0; i < rs.length; i++) ...[
+              _historyRow(rs[i]),
+              if (i != rs.length - 1) const Divider(height: 0.5, color: IOS.separator),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _historyRow(ExchangeRecord r) {
+    final cost = r.costVsReference;
+    final isLoss = cost >= 0;
+    return Dismissible(
+      key: ValueKey(r.id),
+      background: Container(
+        color: IOS.red,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 18),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) async {
+        return await showDialog<bool>(
+              context: context,
+              builder: (_) => AlertDialog(
+                title: const Text('删除这条?'),
+                content: Text(
+                  '${DateFormat('MM-dd HH:mm').format(r.at)} ${r.channel}\n'
+                  '${r.usdtAmount.toStringAsFixed(0)} USDT → ¥${r.cnyReceived.toStringAsFixed(2)}',
+                ),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('取消')),
+                  FilledButton(
+                    style: FilledButton.styleFrom(backgroundColor: IOS.red),
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('删除'),
+                  ),
+                ],
+              ),
+            ) ??
+            false;
+      },
+      onDismissed: (_) => _delete(r),
+      child: InkWell(
+        onTap: () => _edit(r),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          color: Colors.white,
+          child: Row(
+            children: [
+              ChannelIcon(r.channel),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      r.isTwoHop
+                          ? '${r.usdtAmount.toStringAsFixed(0)} USDT → ${(r.jpyAmount! / 10000).toStringAsFixed(1)}万 → ¥${r.cnyReceived.toStringAsFixed(0)}'
+                          : '${r.usdtAmount.toStringAsFixed(0)} USDT → ¥${r.cnyReceived.toStringAsFixed(2)}',
+                      style: IOS.monoSize(14,
+                          weight: FontWeight.w500, color: IOS.textPrimary),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5),
+                          decoration: BoxDecoration(
+                            color: IOS.blue.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: Text(
+                            _shortChannel(r.channel),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: IOS.blue,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '${DateFormat('MM-dd HH:mm').format(r.at)} → ${r.recipient}'
+                            '${r.note.isNotEmpty ? ' · ${r.note}' : ''}',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 11, color: IOS.gray),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${isLoss ? "−" : "+"}¥${cost.abs().toStringAsFixed(0)}',
+                    style: IOS.monoSize(14,
+                        weight: FontWeight.w600,
+                        color: isLoss ? IOS.red : IOS.green),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${r.pctVsReference >= 0 ? "+" : "−"}${r.pctVsReference.abs().toStringAsFixed(2)}%',
+                    style: IOS.monoSize(11, color: IOS.gray),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _shortChannel(String full) {
+    if (full.contains('熊猫')) return '熊猫';
+    if (full.contains('OKX')) return 'OKX';
+    if (full.contains('Binance')) return '币安';
+    if (full.contains('Visa')) return 'Visa';
+    if (full.contains('Wise')) return 'Wise';
+    if (full.contains('中行') || full.contains('中国银行')) return '中行';
+    if (full.contains('JRF')) return 'JRF';
+    if (full.contains('线下')) return '线下';
+    return full;
+  }
+
+  void _showFilter() async {
+    final channels = <String>{'全部', ..._records.map((r) => r.channel)};
+    final v = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: IOS.grayBg,
+      builder: (_) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          children: [
+            for (final c in channels)
+              IOSRow(
+                leadingIcon: c == '全部' ? Icons.list : Icons.filter_alt_outlined,
+                iconColors: const [IOS.blue, IOS.blueDark],
+                label: c,
+                trailing: c == _filter
+                    ? const Icon(Icons.check, color: IOS.blue)
+                    : null,
+                onTap: () => Navigator.pop(context, c),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (v != null) setState(() => _filter = v);
+  }
+
+  Widget _emptyState() => Container(
+        margin: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+        padding: const EdgeInsets.all(40),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(IOS.radCard),
+          border: Border.all(color: IOS.separator, width: 0.5),
+        ),
+        alignment: Alignment.center,
+        child: Column(
+          children: [
+            const Icon(Icons.history, size: 48, color: IOS.gray),
+            const SizedBox(height: 12),
+            const Text('还没有记录',
+                style: TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w600, color: IOS.textPrimary)),
+            const SizedBox(height: 4),
+            const Text('去 + 记一笔,或设置 → 加载示例数据',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: IOS.gray)),
+          ],
+        ),
+      );
+}
+
+class _EditDialog extends StatefulWidget {
+  final ExchangeRecord record;
+  const _EditDialog({required this.record});
+  @override
+  State<_EditDialog> createState() => _EditDialogState();
+}
+
+class _EditDialogState extends State<_EditDialog> {
+  late TextEditingController _usdt, _jpy, _cny, _note;
+  late DateTime _at;
+  late String _recipient;
+
+  @override
+  void initState() {
+    super.initState();
+    final r = widget.record;
+    _usdt = TextEditingController(text: r.usdtAmount.toString());
+    _jpy = TextEditingController(text: r.jpyAmount?.toStringAsFixed(0) ?? '');
+    _cny = TextEditingController(text: r.cnyReceived.toString());
+    _note = TextEditingController(text: r.note);
+    _at = r.at;
+    _recipient = r.recipient;
+  }
+
+  @override
+  void dispose() {
+    _usdt.dispose();
+    _jpy.dispose();
+    _cny.dispose();
+    _note.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDateTime() async {
+    final d = await showDatePicker(
+        context: context,
+        initialDate: _at,
+        firstDate: DateTime(2023),
+        lastDate: DateTime(2030));
+    if (d == null || !mounted) return;
+    final t = await showTimePicker(
+        context: context, initialTime: TimeOfDay.fromDateTime(_at));
+    if (t == null) return;
+    setState(() => _at = DateTime(d.year, d.month, d.day, t.hour, t.minute));
+  }
+
+  @override
+  Widget build(BuildContext c) {
+    final r = widget.record;
+    return AlertDialog(
+      title: Text('编辑 · ${r.channel}', style: const TextStyle(fontSize: 14)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            InkWell(
+              onTap: _pickDateTime,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  border: Border.all(color: IOS.separator),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.event, size: 16, color: IOS.blue),
+                  const SizedBox(width: 8),
+                  Text(DateFormat('yyyy-MM-dd HH:mm').format(_at)),
+                ]),
+              ),
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              value: _recipient,
+              decoration: const InputDecoration(labelText: '收款人', isDense: true),
+              items: kRecipients
+                  .map((x) => DropdownMenuItem(value: x, child: Text(x)))
+                  .toList(),
+              onChanged: (v) => setState(() => _recipient = v!),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _usdt,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'USDT', isDense: true),
+            ),
+            if (r.isTwoHop) ...[
+              const SizedBox(height: 10),
+              TextField(
+                controller: _jpy,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration:
+                    const InputDecoration(labelText: '中转 JPY', isDense: true),
+              ),
+            ],
+            const SizedBox(height: 10),
+            TextField(
+              controller: _cny,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: '实收 CNY', isDense: true),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _note,
+              decoration: const InputDecoration(labelText: '备注', isDense: true),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消')),
+        FilledButton(
+          onPressed: () {
+            final u = double.tryParse(_usdt.text);
+            final cny = double.tryParse(_cny.text);
+            final jpy = widget.record.isTwoHop
+                ? double.tryParse(_jpy.text)
+                : null;
+            if (u == null ||
+                u <= 0 ||
+                cny == null ||
+                cny <= 0 ||
+                (widget.record.isTwoHop && (jpy == null || jpy <= 0))) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('金额必须为正数')));
+              return;
+            }
+            Navigator.pop(
+              context,
+              ExchangeRecord(
+                id: widget.record.id,
+                at: _at,
+                channel: widget.record.channel,
+                usdtAmount: u,
+                jpyAmount: jpy,
+                cnyReceived: cny,
+                referenceRate: widget.record.referenceRate,
+                jpyCnyReference: widget.record.jpyCnyReference,
+                recipient: _recipient,
+                note: _note.text.trim(),
+              ),
+            );
+          },
+          child: const Text('保存'),
+        ),
+      ],
+    );
+  }
+}

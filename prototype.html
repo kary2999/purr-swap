@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>USDT 换汇记账 - 原型图</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", sans-serif;
+    background: #f0f2f5;
+    padding: 24px;
+    color: #1a1a1a;
+  }
+  h1 { font-size: 18px; margin-bottom: 16px; color: #555; }
+  .wireframe-note {
+    background: #fff8dc; border-left: 3px solid #f5a623;
+    padding: 8px 12px; font-size: 12px; margin-bottom: 20px; border-radius: 4px;
+  }
+  .layout { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+
+  /* 扩展弹窗尺寸模拟 Chrome popup */
+  .popup {
+    width: 380px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+  .popup-label {
+    text-align: center; font-size: 12px; color: #888;
+    margin-bottom: 8px;
+  }
+
+  /* 顶栏 */
+  .header {
+    background: linear-gradient(135deg, #4a7bff, #6f5aff);
+    color: #fff; padding: 16px 18px;
+  }
+  .header .title { font-size: 15px; font-weight: 600; }
+  .header .sub { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+
+  /* Tab 切换 */
+  .tabs {
+    display: flex; border-bottom: 1px solid #eee;
+    background: #fafbfc;
+  }
+  .tab {
+    flex: 1; padding: 10px 0; text-align: center;
+    font-size: 13px; color: #666; cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+  .tab.active { color: #4a7bff; border-color: #4a7bff; background: #fff; font-weight: 500; }
+
+  .content { padding: 16px 18px; }
+
+  /* Summary 卡片 */
+  .summary-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-bottom: 14px;
+  }
+  .stat-card {
+    background: #f7f9fc; border-radius: 8px; padding: 10px 12px;
+  }
+  .stat-card .label { font-size: 11px; color: #888; }
+  .stat-card .value { font-size: 16px; font-weight: 600; margin-top: 4px; }
+  .stat-card .delta { font-size: 11px; margin-top: 2px; }
+  .delta.neg { color: #e74c3c; }
+  .delta.pos { color: #27ae60; }
+
+  /* 实时汇率 */
+  .rate-box {
+    background: #eef4ff; border-radius: 8px; padding: 10px 12px;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 14px;
+  }
+  .rate-box .label { font-size: 11px; color: #666; }
+  .rate-box .rate { font-size: 15px; font-weight: 600; color: #4a7bff; }
+  .rate-box .src { font-size: 10px; color: #999; }
+
+  /* 表单 */
+  .form-group { margin-bottom: 12px; }
+  .form-group label {
+    display: block; font-size: 12px; color: #555; margin-bottom: 4px;
+  }
+  .form-group input, .form-group select {
+    width: 100%; padding: 8px 10px; font-size: 13px;
+    border: 1px solid #dde1e8; border-radius: 6px; outline: none;
+  }
+  .form-group input:focus { border-color: #4a7bff; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .hint {
+    font-size: 11px; color: #888; margin-top: 4px;
+  }
+  .hint .highlight { color: #e74c3c; font-weight: 500; }
+
+  .btn {
+    width: 100%; padding: 10px; font-size: 13px;
+    background: #4a7bff; color: #fff; border: none;
+    border-radius: 6px; cursor: pointer; font-weight: 500;
+  }
+  .btn.ghost { background: #f0f2f5; color: #4a7bff; }
+
+  /* 历史列表 */
+  .history-item {
+    padding: 10px 0; border-bottom: 1px solid #f0f0f0;
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .history-item:last-child { border: none; }
+  .history-item .left .date { font-size: 11px; color: #999; }
+  .history-item .left .flow { font-size: 13px; margin-top: 2px; }
+  .history-item .left .channel {
+    display: inline-block; font-size: 10px; padding: 1px 6px;
+    background: #eef4ff; color: #4a7bff; border-radius: 3px; margin-top: 4px;
+  }
+  .history-item .right { text-align: right; }
+  .history-item .right .cost { font-size: 13px; font-weight: 600; }
+  .history-item .right .cost.neg { color: #e74c3c; }
+  .history-item .right .cost.pos { color: #27ae60; }
+  .history-item .right .rate { font-size: 10px; color: #999; margin-top: 2px; }
+
+  /* Chart */
+  .chart-wrap {
+    background: #fafbfc; border-radius: 8px; padding: 12px; margin-bottom: 14px;
+  }
+  .chart-title {
+    font-size: 12px; color: #666; margin-bottom: 8px;
+    display: flex; justify-content: space-between;
+  }
+  .filter-pills { display: flex; gap: 4px; }
+  .pill {
+    font-size: 10px; padding: 2px 8px; border-radius: 10px;
+    background: #eee; color: #666; cursor: pointer;
+  }
+  .pill.active { background: #4a7bff; color: #fff; }
+
+  /* 设置页 */
+  .setting-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0; border-bottom: 1px solid #f0f0f0;
+  }
+  .setting-row .name { font-size: 13px; }
+  .setting-row .desc { font-size: 11px; color: #888; margin-top: 2px; }
+  .setting-row .action {
+    font-size: 12px; color: #4a7bff; cursor: pointer;
+  }
+  .warn-box {
+    background: #fff5f5; border-left: 3px solid #e74c3c;
+    padding: 8px 10px; font-size: 11px; color: #c0392b;
+    border-radius: 4px; margin-top: 10px;
+  }
+
+  /* 渠道标签颜色 */
+  .ch-binance { background: #fff4e0; color: #f0b90b; }
+  .ch-okx { background: #e8e8e8; color: #333; }
+  .ch-offline { background: #e8f5e8; color: #27ae60; }
+  .ch-visa { background: #e6f0ff; color: #1a56db; }
+  .ch-pandaremit { background: #ffe8f0; color: #e91e63; }
+  .ch-wise { background: #e0faf0; color: #00b9a0; }
+  .ch-boc { background: #fff0e0; color: #d35400; }
+</style>
+</head>
+<body>
+
+<h1>USDT 换汇记账 Chrome 扩展 · 原型图</h1>
+<div class="wireframe-note">
+  📌 这是视觉原型,非功能实现。宽度 380px 模拟 Chrome 扩展 popup 尺寸。所有数据为演示示例。
+</div>
+
+<div class="layout">
+
+  <!-- ===== 页面 1: 首页 / 新增记录 ===== -->
+  <div>
+    <div class="popup-label">① 首页 · 新增换汇记录</div>
+    <div class="popup">
+      <div class="header">
+        <div class="title">USDT 换汇记账</div>
+        <div class="sub">本月汇损 ¥ 347.20 · 平均 -1.8%</div>
+      </div>
+      <div class="tabs">
+        <div class="tab active">记一笔</div>
+        <div class="tab">历史</div>
+        <div class="tab">统计</div>
+        <div class="tab">设置</div>
+      </div>
+      <div class="content">
+
+        <div class="rate-box">
+          <div>
+            <div class="label">Wise 实时中间价</div>
+            <div class="src">USDT ≈ USD · 30 秒前更新</div>
+          </div>
+          <div class="rate">1 USDT = ¥ 7.2431</div>
+        </div>
+
+        <div class="form-group">
+          <label>渠道</label>
+          <select>
+            <option>Binance OTC</option>
+            <option>OKX OTC</option>
+            <option>线下人民币</option>
+            <option>Visa 卡取现</option>
+            <option>熊猫速汇(JPY)</option>
+            <option>Wise(JPY)</option>
+            <option>中国银行汇款</option>
+          </select>
+        </div>
+
+        <div class="row-2">
+          <div class="form-group">
+            <label>USDT 金额</label>
+            <input type="text" value="1380.00">
+          </div>
+          <div class="form-group">
+            <label>实收 CNY</label>
+            <input type="text" value="9800.00">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>备注(可选)</label>
+          <input type="text" placeholder="如: 3月工资、周末换汇">
+        </div>
+
+        <div class="hint" style="background:#f7f9fc;padding:8px;border-radius:6px;margin-bottom:12px;">
+          实际汇率 <b>7.1014</b> · 对比 Wise <span class="highlight">-1.96%</span><br>
+          预期 ¥ 9,995.48 · 实收 ¥ 9,800.00 · <span class="highlight">汇损 ¥ 195.48</span>
+        </div>
+
+        <button class="btn">保存记录</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 页面 2: 历史 ===== -->
+  <div>
+    <div class="popup-label">② 历史记录列表</div>
+    <div class="popup">
+      <div class="header">
+        <div class="title">USDT 换汇记账</div>
+        <div class="sub">累计 12 笔 · 总汇损 ¥ 1,823.40</div>
+      </div>
+      <div class="tabs">
+        <div class="tab">记一笔</div>
+        <div class="tab active">历史</div>
+        <div class="tab">统计</div>
+        <div class="tab">设置</div>
+      </div>
+      <div class="content">
+
+        <div class="form-group">
+          <select>
+            <option>全部渠道</option>
+            <option>Binance OTC</option>
+            <option>线下</option>
+          </select>
+        </div>
+
+        <div class="history-item">
+          <div class="left">
+            <div class="date">2026-04-18 20:14</div>
+            <div class="flow">1,380 USDT → ¥ 9,800</div>
+            <span class="channel ch-binance">Binance</span>
+          </div>
+          <div class="right">
+            <div class="cost neg">-¥ 195</div>
+            <div class="rate">7.1014 / -1.96%</div>
+          </div>
+        </div>
+
+        <div class="history-item">
+          <div class="left">
+            <div class="date">2026-04-10 14:02</div>
+            <div class="flow">500 USDT → ¥ 3,620</div>
+            <span class="channel ch-offline">线下</span>
+          </div>
+          <div class="right">
+            <div class="cost pos">+¥ 18</div>
+            <div class="rate">7.2400 / +0.15%</div>
+          </div>
+        </div>
+
+        <div class="history-item">
+          <div class="left">
+            <div class="date">2026-04-05 09:30</div>
+            <div class="flow">800 USDT → ¥ 5,620</div>
+            <span class="channel ch-pandaremit">熊猫(JPY)</span>
+          </div>
+          <div class="right">
+            <div class="cost neg">-¥ 168</div>
+            <div class="rate">7.0250 / -2.90%</div>
+          </div>
+        </div>
+
+        <div class="history-item">
+          <div class="left">
+            <div class="date">2026-03-28 18:45</div>
+            <div class="flow">200 USDT → ¥ 1,420</div>
+            <span class="channel ch-visa">Visa</span>
+          </div>
+          <div class="right">
+            <div class="cost neg">-¥ 24</div>
+            <div class="rate">7.1000 / -1.70%</div>
+          </div>
+        </div>
+
+        <div class="history-item">
+          <div class="left">
+            <div class="date">2026-03-20 11:20</div>
+            <div class="flow">1,000 USDT → ¥ 7,180</div>
+            <span class="channel ch-okx">OKX</span>
+          </div>
+          <div class="right">
+            <div class="cost neg">-¥ 63</div>
+            <div class="rate">7.1800 / -0.87%</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 页面 3: 统计 ===== -->
+  <div>
+    <div class="popup-label">③ 统计曲线</div>
+    <div class="popup">
+      <div class="header">
+        <div class="title">USDT 换汇记账</div>
+        <div class="sub">过去 90 天分析</div>
+      </div>
+      <div class="tabs">
+        <div class="tab">记一笔</div>
+        <div class="tab">历史</div>
+        <div class="tab active">统计</div>
+        <div class="tab">设置</div>
+      </div>
+      <div class="content">
+
+        <div class="summary-grid">
+          <div class="stat-card">
+            <div class="label">累计换汇</div>
+            <div class="value">¥ 42,680</div>
+            <div class="delta">5,890 USDT</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">总汇损</div>
+            <div class="value" style="color:#e74c3c;">-¥ 1,823</div>
+            <div class="delta neg">平均 -1.47%</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">最优渠道</div>
+            <div class="value" style="font-size:14px;">线下</div>
+            <div class="delta pos">+0.12%</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">最差渠道</div>
+            <div class="value" style="font-size:14px;">熊猫速汇</div>
+            <div class="delta neg">-2.80%</div>
+          </div>
+        </div>
+
+        <div class="chart-wrap">
+          <div class="chart-title">
+            <span>实际汇率 vs Wise 中间价</span>
+            <div class="filter-pills">
+              <span class="pill">7天</span>
+              <span class="pill active">30天</span>
+              <span class="pill">90天</span>
+            </div>
+          </div>
+          <canvas id="rateChart" height="140"></canvas>
+        </div>
+
+        <div class="chart-wrap">
+          <div class="chart-title">
+            <span>各渠道汇损对比 (%)</span>
+          </div>
+          <canvas id="channelChart" height="120"></canvas>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 页面 4: 设置 ===== -->
+  <div>
+    <div class="popup-label">④ 设置</div>
+    <div class="popup">
+      <div class="header">
+        <div class="title">USDT 换汇记账</div>
+        <div class="sub">数据本地存储 · 卸载即清空</div>
+      </div>
+      <div class="tabs">
+        <div class="tab">记一笔</div>
+        <div class="tab">历史</div>
+        <div class="tab">统计</div>
+        <div class="tab active">设置</div>
+      </div>
+      <div class="content">
+
+        <div class="setting-row">
+          <div>
+            <div class="name">汇率数据源</div>
+            <div class="desc">Wise 中间价 API</div>
+          </div>
+          <div class="action">切换</div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="name">基准货币对</div>
+            <div class="desc">USDT → CNY</div>
+          </div>
+          <div class="action">修改</div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="name">预期月工资(USDT)</div>
+            <div class="desc">用于月度汇损百分比计算</div>
+          </div>
+          <div class="action">1,380</div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="name">导出数据</div>
+            <div class="desc">JSON / CSV 格式下载</div>
+          </div>
+          <div class="action">导出</div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="name">导入数据</div>
+            <div class="desc">从备份 JSON 恢复</div>
+          </div>
+          <div class="action">导入</div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="name">清空全部数据</div>
+            <div class="desc">不可恢复</div>
+          </div>
+          <div class="action" style="color:#e74c3c;">清空</div>
+        </div>
+
+        <div class="warn-box">
+          ⚠️ 数据仅保存在浏览器本地 (chrome.storage.local)。卸载扩展会丢失,请定期导出备份。
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// 演示 Chart
+const ctx1 = document.getElementById('rateChart').getContext('2d');
+new Chart(ctx1, {
+  type: 'line',
+  data: {
+    labels: ['3/20','3/25','3/28','4/2','4/5','4/10','4/15','4/18'],
+    datasets: [
+      {
+        label: 'Wise 中间价',
+        data: [7.23, 7.24, 7.22, 7.25, 7.24, 7.24, 7.25, 7.24],
+        borderColor: '#4a7bff',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        tension: 0.3,
+        pointRadius: 2
+      },
+      {
+        label: '实际成交',
+        data: [7.18, null, 7.10, null, 7.02, 7.24, null, 7.10],
+        borderColor: '#e74c3c',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        tension: 0.3,
+        pointRadius: 4,
+        spanGaps: true
+      }
+    ]
+  },
+  options: {
+    plugins: { legend: { labels: { font: { size: 10 } } } },
+    scales: {
+      y: { ticks: { font: { size: 10 } } },
+      x: { ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+const ctx2 = document.getElementById('channelChart').getContext('2d');
+new Chart(ctx2, {
+  type: 'bar',
+  data: {
+    labels: ['线下', 'Binance', 'OKX', 'Visa', '熊猫'],
+    datasets: [{
+      data: [0.12, -1.96, -0.87, -1.70, -2.90],
+      backgroundColor: ['#27ae60','#f0b90b','#888','#1a56db','#e91e63']
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { ticks: { font: { size: 10 } } },
+      x: { ticks: { font: { size: 10 } } }
+    }
+  }
+});
+</script>
+
+</body>
+</html>

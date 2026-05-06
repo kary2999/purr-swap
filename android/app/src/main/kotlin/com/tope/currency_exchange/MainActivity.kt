@@ -1,0 +1,5 @@
+package com.tope.currency_exchange
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()
