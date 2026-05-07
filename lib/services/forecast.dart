@@ -36,6 +36,7 @@ class ForecastService {
     final okx = q('OKX-C2C', 'USDT/CNY')?.mid;
     final pandaJpyCny = q('熊猫速汇', 'JPY/CNY')?.mid;
     final bocJpyCny = q('中行(日本)', 'JPY/CNY')?.mid;
+    final sevenBankJpyCny = q('Seven Bank', 'JPY/CNY')?.mid;
 
     final rows = <ForecastRow>[];
 
@@ -90,6 +91,10 @@ class ForecastService {
           case '中行(日本)':
             leg2Rate = bocJpyCny;
             leg2Label = '中行';
+            break;
+          case 'Seven Bank':
+            leg2Rate = sevenBankJpyCny;
+            leg2Label = '7Bank';
             break;
           default:
             // Wise / JRF 没有平台实时价,用 Wise mid-market 减 markup 模拟

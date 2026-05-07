@@ -196,6 +196,21 @@ const kChannels = <ChannelMeta>[
     ],
   ),
   ChannelMeta(
+    '7Bank(JPY)',
+    twoHop: true,
+    jpyQuotaControlled: true,
+    platformFeeJpy: 2000,
+    atmFeeJpy: 440,
+    jpyCnyRateSource: 'Seven Bank',
+    downloadUrl: 'https://www.sevenbank.co.jp/personal/oversea/',
+    tagline: '2000 JPY/笔 · 便利店 ATM 直发',
+    risk: RiskLevel.low,
+    riskNote: '由 Seven Bank(日本上市行,JFSA 持牌)运营。'
+        '便利店 ATM 直发,操作便利但单笔费用高于熊猫(2000 vs 800)。'
+        '小额不划算,大额体验最便捷。收款方建议微信/支付宝。',
+    riskRefs: [],
+  ),
+  ChannelMeta(
     'Wise(JPY)',
     twoHop: true,
     jpyQuotaControlled: true,
