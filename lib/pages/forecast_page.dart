@@ -135,22 +135,31 @@ class _ForecastPageState extends State<ForecastPage> {
   }
 
   String _channelMeta(ForecastRow r) {
-    final src = _dataSource(r.channel.name);
+    final src = _dataSource(r);
+    final flag = r.isMeasured ? '✓实测' : '⚠估算';
     final tag = r.channel.tagline;
-    if (tag.isNotEmpty) return '$tag · 来源 $src';
-    return '来源 $src';
+    if (tag.isNotEmpty) return '$tag · $src · $flag';
+    return '$src · $flag';
   }
 
-  String _dataSource(String channelName) {
-    if (channelName.contains('Binance')) return '币安 P2P';
-    if (channelName.contains('OKX')) return 'OKX C2C';
-    if (channelName.contains('Visa')) return 'Visa 官方';
-    if (channelName.contains('熊猫')) return '熊猫实时 API';
-    if (channelName.contains('中国银行') || channelName.contains('中行'))
-      return '熊猫 API · 平台费率';
-    if (channelName.contains('JRF') || channelName.contains('Wise'))
-      return 'Wise 中间价 + 估算费率';
-    if (channelName.contains('线下')) return 'Wise 中间价(乐观)';
+  /// 数据来源说明 —— 显式区分 "实测" vs "估算"，方便用户判断数字可信度
+  String _dataSource(ForecastRow r) {
+    final name = r.channel.name;
+    if (name.contains('Binance')) return '币安 C2C 蓝钻成交价';
+    if (name.contains('OKX')) return 'OKX C2C 订单簿';
+    if (name.contains('Visa')) return 'Visa 官方汇率(费率内置)';
+    if (name.contains('Seven Bank') || name.contains('7Bank'))
+      return '熊猫 API · 7Bank 牌价';
+    if (name.contains('熊猫')) return '熊猫 API · 平台实时牌价';
+    if (name.contains('中行') || name.contains('中国银行'))
+      return '熊猫 API · 中行牌价';
+    if (name == 'Wise(JPY)') {
+      return r.isMeasured
+          ? 'Wise comparisons API · 实测 fee'
+          : 'Wise mid + 估算 fee(API 失败回退)';
+    }
+    if (name.contains('JRF')) return '内置估算(无公开 API)';
+    if (name.contains('线下')) return 'Wise 中间价(无 fee 乐观)';
     return 'Wise 中间价';
   }
 
