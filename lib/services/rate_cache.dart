@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/quote.dart';
@@ -20,6 +21,7 @@ class RateCache {
   List<Quote> _quotes = [];
   DateTime? _lastFetch;
   Future<List<Quote>>? _pending;
+  Timer? _autoTimer;
 
   List<Quote> get snapshot => List.unmodifiable(_quotes);
   DateTime? get lastFetch => _lastFetch;
@@ -73,6 +75,33 @@ class RateCache {
         await sp.setInt(_fetchTimeKey, _lastFetch!.millisecondsSinceEpoch);
       }
     } catch (_) {}
+  }
+
+  /// 启动后台自动刷新。默认每小时一次。
+  ///
+  /// - 启动后立即触发一次 refresh（如果距上次拉取超过 [interval]）
+  /// - 之后每隔 [interval] 后台调用 refresh()
+  /// - 单源失败不影响整体（RateFetcher._safe 已包裹）
+  /// - 多次调用会先 cancel 上一个 Timer
+  void startAutoRefresh({Duration interval = const Duration(hours: 1)}) {
+    _autoTimer?.cancel();
+    final stale = _lastFetch == null ||
+        DateTime.now().difference(_lastFetch!) >= interval;
+    if (stale && _pending == null) {
+      // 不 await，让调用方继续启动
+      refresh().catchError((_) => <Quote>[]);
+    }
+    _autoTimer = Timer.periodic(interval, (_) {
+      if (_pending == null) {
+        refresh().catchError((_) => <Quote>[]);
+      }
+    });
+  }
+
+  /// 停止自动刷新（卸载页面或 app 退出时调用）
+  void stopAutoRefresh() {
+    _autoTimer?.cancel();
+    _autoTimer = null;
   }
 
   /// 清空缓存(导出/重置用)
