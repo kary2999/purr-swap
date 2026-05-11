@@ -17,8 +17,8 @@ Future<void> main() async {
     debugPrint('[web] registerWebPlugins DONE at ${DateTime.now()}');
   }
   await RateCache.instance.loadFromDisk();
-  // 后台每小时自动刷新汇率（启动若数据已陈旧也立即刷一次）
-  RateCache.instance.startAutoRefresh(interval: const Duration(hours: 1));
+  // 后台每 10 分钟自动刷新汇率（启动若数据已陈旧也立即刷一次）
+  RateCache.instance.startAutoRefresh(interval: const Duration(minutes: 10));
   runApp(const PurrSwapApp());
 }
 

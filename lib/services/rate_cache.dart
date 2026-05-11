@@ -77,13 +77,13 @@ class RateCache {
     } catch (_) {}
   }
 
-  /// 启动后台自动刷新。默认每小时一次。
+  /// 启动后台自动刷新。默认每 10 分钟一次。
   ///
   /// - 启动后立即触发一次 refresh（如果距上次拉取超过 [interval]）
   /// - 之后每隔 [interval] 后台调用 refresh()
   /// - 单源失败不影响整体（RateFetcher._safe 已包裹）
   /// - 多次调用会先 cancel 上一个 Timer
-  void startAutoRefresh({Duration interval = const Duration(hours: 1)}) {
+  void startAutoRefresh({Duration interval = const Duration(minutes: 10)}) {
     _autoTimer?.cancel();
     final stale = _lastFetch == null ||
         DateTime.now().difference(_lastFetch!) >= interval;
