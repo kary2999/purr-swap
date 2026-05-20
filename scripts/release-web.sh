@@ -33,6 +33,24 @@ flutter build web --release --pwa-strategy=none --base-href="$BASE_HREF" 2>&1 | 
 # 给 build/web 加个 .nojekyll，让 GitHub Pages 不要 Jekyll 处理（保留 _flutter 等下划线开头目录）
 touch build/web/.nojekyll
 
+# 把 dist/version.json 复制过来 (app 自更新检测优先走 Pages 同源 fetch)
+# 如果 release.sh 没跑过，dist/version.json 不存在 → 现场生成最简版
+if [ -f dist/version.json ]; then
+  cp dist/version.json build/web/version.json
+else
+  CUR_VER=$(grep '^version:' pubspec.yaml | awk '{print $2}' | tr -d '\r')
+  cat > build/web/version.json <<JSON_EOF
+{
+  "latest": "${CUR_VER}",
+  "android": "https://github.com/kary2999/purr-swap/raw/releases/PurrSwap-v${CUR_VER}-Android.apk",
+  "macos": "https://github.com/kary2999/purr-swap/raw/releases/PurrSwap-v${CUR_VER}-macOS.dmg",
+  "zip": "https://github.com/kary2999/purr-swap/raw/releases/PurrSwap-v${CUR_VER}-release.zip",
+  "web": "https://kary2999.github.io/purr-swap/",
+  "notes": "v${CUR_VER} (web build, $(date '+%Y-%m-%d'))"
+}
+JSON_EOF
+fi
+
 # README on the deployed branch (顺手)
 cat > build/web/.deploy-info <<EOF
 Purr Swap Web 部署

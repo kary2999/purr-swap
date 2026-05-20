@@ -106,6 +106,27 @@ class ExchangeRecord {
 /// 风险等级
 enum RiskLevel { veryLow, low, medium, high }
 
+/// 平台手续费扣款方式 —— 关键差异
+///   - external: **外扣** 固定金额（如熊猫 800 JPY/笔, 邮局 165 JPY, 中行 6000 JPY）
+///     "你给 200000，平台收 800，剩 199200 真正换汇"
+///   - internal: **内扣** 阶梯比例（如 Wise: 584 + 1.244% × amount）
+///     "你给 200000，平台先扣 3072，剩 196928 真正换汇 — 金额越大 fee 越贵"
+///   - estimated: 内置估算（无公开 API，凭经验值，**会有偏差**）
+enum FeeKind { external, internal, estimated }
+
+extension FeeKindX on FeeKind {
+  String get label => switch (this) {
+        FeeKind.external => '外扣',
+        FeeKind.internal => '内扣',
+        FeeKind.estimated => '估算',
+      };
+  String get longLabel => switch (this) {
+        FeeKind.external => '外扣 · 固定费',
+        FeeKind.internal => '内扣 · 比例费',
+        FeeKind.estimated => '估算 · 无公开 API',
+      };
+}
+
 extension RiskLevelX on RiskLevel {
   String get label => switch (this) {
         RiskLevel.veryLow => '极低',
@@ -134,6 +155,9 @@ class ChannelMeta {
   final String? jpyCnyRateSource;
   final String? downloadUrl;
   final String tagline;
+  // 手续费类型 —— 关键区分（外扣 vs 内扣）。external 走 platformFeeJpy 固定值,
+  // internal 优先用 Wise 实测线性模型, estimated 用 markupPct 兜底
+  final FeeKind feeKind;
   // 风险模型
   final RiskLevel risk;
   final String riskNote;
@@ -150,6 +174,7 @@ class ChannelMeta {
     this.jpyCnyRateSource,
     this.downloadUrl,
     this.tagline = '',
+    this.feeKind = FeeKind.external,
     this.risk = RiskLevel.medium,
     this.riskNote = '',
     this.riskRefs = const [],
@@ -163,11 +188,12 @@ const kChannels = <ChannelMeta>[
     twoHop: true,
     jpyQuotaControlled: true,
     platformFeeJpy: 6000,
-    atmFeeJpy: 440,
+    atmFeeJpy: 165,
     jpyCnyRateSource: '中行(日本)',
+    feeKind: FeeKind.external,
     downloadUrl:
         'https://www.boc.cn/jp/custserv/cs1/201301/t20130111_2167389.html',
-    tagline: '¥6000/笔 · 大额才划算',
+    tagline: '外扣 ¥6000/笔 · 大额才划算',
     risk: RiskLevel.veryLow,
     riskNote: '完全合规合法。需亲自去日本中行柜台操作(或网银),'
         '需国内本人/直系亲属有中行账户作为收款方。'
@@ -182,10 +208,11 @@ const kChannels = <ChannelMeta>[
     twoHop: true,
     jpyQuotaControlled: true,
     platformFeeJpy: 800,
-    atmFeeJpy: 440,
+    atmFeeJpy: 165,
     jpyCnyRateSource: '熊猫速汇',
+    feeKind: FeeKind.external,
     downloadUrl: 'https://www.pandaremit.com/download',
-    tagline: '800 JPY/笔 · 10-30min 到账 · 国内团队',
+    tagline: '外扣 ¥800/笔(固定) · 10-30min 到账',
     risk: RiskLevel.low,
     riskNote: '持有日本金融厅(関東財務局)登录番号 · 正规合规平台。'
         '大额/长期使用可能被要求提供收入证明(源泉徴収票/工资单)。'
@@ -200,10 +227,11 @@ const kChannels = <ChannelMeta>[
     twoHop: true,
     jpyQuotaControlled: true,
     platformFeeJpy: 2000,
-    atmFeeJpy: 440,
+    atmFeeJpy: 165,
     jpyCnyRateSource: 'Seven Bank',
+    feeKind: FeeKind.external,
     downloadUrl: 'https://www.sevenbank.co.jp/personal/oversea/',
-    tagline: '2000 JPY/笔 · 便利店 ATM 直发',
+    tagline: '外扣 ¥2000/笔(固定) · 便利店 ATM 直发',
     risk: RiskLevel.low,
     riskNote: '由 Seven Bank(日本上市行,JFSA 持牌)运营。'
         '便利店 ATM 直发,操作便利但单笔费用高于熊猫(2000 vs 800)。'
@@ -214,16 +242,35 @@ const kChannels = <ChannelMeta>[
     'Wise(JPY)',
     twoHop: true,
     jpyQuotaControlled: true,
-    // Wise 实际: 固定 ¥350 + 0.44% 浮动 (JPY→CNY)。我们用等价固定 + 点差近似
-    platformFeeJpy: 350,
-    markupPct: 0.0044,
-    atmFeeJpy: 440,
+    // Wise 实测线性 fee: 584 + 1.244% × amount (JPY→CNY)
+    // 代码运行时优先用 Quote.feeIntercept / feeSlope 实测值,以下是 API 失败回退
+    platformFeeJpy: 584,
+    markupPct: 0.01244,
+    // 入金到 Wise 的成本: 邮局线上振込 = ¥165 (最便宜)；
+    // 三菱 UFJ ATM ≈ ¥110-440; 互联网银行常 ¥0-¥110
+    // 这里默认 ¥165 (假设走邮局)，实际看你的入金行
+    atmFeeJpy: 165,
+    feeKind: FeeKind.internal,
     downloadUrl: 'https://wise.com/download',
-    tagline: '非国内团队 · 风控退款慢',
+    tagline: '内扣 ¥584+1.244% · 入金 ¥165 (邮局)',
     risk: RiskLevel.low,
     riskNote: '英国/欧盟金融牌照,合规。**风控严格**,大额/高频'
-        '易触发审核,退款周期 1-4 周。'
-        '收款同样推荐微信/支付宝,银行卡慎用。',
+        '易触发审核,退款周期 1-4 周。\n\n'
+        '【收款方式因人而异】微信/支付宝/国内银行卡都可能出现, '
+        'Wise 根据收款人动态匹配渠道, 同一发送人不同时段可能不一样。'
+        '常见: 微信(最多) > 支付宝 > 银联借记卡 > 部分银行卡。\n\n'
+        '【实际操作 - 日本国内振込到 Wise Japan】\n'
+        '在 Wise app 注册后会拿到一组**你专属的**收款账户:\n'
+        '  金融機関: ワイズ・ペイメンツ・ジャパン\n'
+        '  支店名: ひかり支店\n'
+        '  口座種別: 普通\n'
+        '  口座番号: ⚠️ 你的 Wise 专属账号 (登录 Wise app 查; 每人不同)\n'
+        '  名義: ワイズ ペイメンツ ジャパン (カ\n\n'
+        '入金渠道手续费参考:\n'
+        '  · 邮局 ゆうちょ ダイレクト 线上 → ¥165 (本 app 默认)\n'
+        '  · 普通银行 ATM 振込 → ¥110-440\n'
+        '  · 互联网银行 → 经常 ¥0-¥110\n\n'
+        '入金后 Wise 内扣 fee (200k JPY → 约 ¥3072), 再换 CNY 到国内。',
     riskRefs: [
       RiskReference('Wise 国际汇款合规说明',
           'https://wise.com/help/articles/2977951'),
@@ -233,15 +280,38 @@ const kChannels = <ChannelMeta>[
     'JRF Wallet',
     twoHop: true,
     jpyQuotaControlled: true,
-    // JRF 实际: ¥1000/笔 + 约 0.3% 点差 vs mid
+    // JRF 无公开 API → 估算: 约 1000 + 0.3% 点差 vs mid
     platformFeeJpy: 1000,
-    atmFeeJpy: 440,
+    atmFeeJpy: 165,
     markupPct: 0.003,
+    feeKind: FeeKind.estimated,
     downloadUrl: 'https://www.jrf.co.jp/app/',
-    tagline: 'ECO 预付卡 · 可多笔小额',
+    tagline: '估算 ¥1000 + 0.3% (无公开 API,数值参考)',
     risk: RiskLevel.low,
     riskNote: '日本金融厅登录番号平台,正规合规。'
-        '大额同样需要资金来源证明。收款建议微信/支付宝。',
+        '大额同样需要资金来源证明。收款建议微信/支付宝。'
+        '⚠️ 本 app 中 JRF 的 fee 是估算值,实际请以 JRF app 显示为准。',
+    riskRefs: [],
+  ),
+  ChannelMeta(
+    '邮局(JPY)',
+    twoHop: true,
+    jpyQuotaControlled: false,
+    // 日本邮局 国際送金 (ゆうちょ国際送金):
+    //   线上转账 165 JPY 手续费 (外扣固定)
+    //   汇率用 TTS (TTM 加 ~1.5% spread),走 Wise mid - 1.5% 估算
+    platformFeeJpy: 165,
+    atmFeeJpy: 0,
+    markupPct: 0.015,
+    feeKind: FeeKind.external,
+    downloadUrl: 'https://www.jp-bank.japanpost.jp/kojin/sokin/kokusai/',
+    tagline: '外扣 ¥165/笔 (线上) · 汇率约 mid−1.5%',
+    risk: RiskLevel.veryLow,
+    riskNote: '日本邮政株式会社(政府持股) · 极度合规。'
+        '线上转账(ゆうちょダイレクト)手续费仅 165 JPY 固定。'
+        '汇率走 Mizuho/MUFG 当日 TTS(略低于 mid 1-2%),无附加费用。'
+        '需要先开邮局账户 + 启用 国際送金 服务(线下办理一次)。'
+        '收款方为国内银行账户(非微信/支付宝)。',
     riskRefs: [],
   ),
 
@@ -250,7 +320,8 @@ const kChannels = <ChannelMeta>[
     'Visa 卡取现',
     markupPct: 0.006,
     fixedFeeCny: 15,
-    tagline: '国内 ATM 取现 千6+¥15',
+    feeKind: FeeKind.estimated,
+    tagline: '内扣 ≈0.6% + ¥15 (估算,卡商不同有差异)',
     risk: RiskLevel.medium,
     riskNote: '发卡方多为离岸机构(圣文森特/开曼),监管灰区。'
         '资金走 Visa 国际清算,**无法提供中国境内合法收入证明**。'

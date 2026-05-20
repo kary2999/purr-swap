@@ -35,9 +35,6 @@ class ForecastService {
     final wiseUsdCny = wiseUsdCnyQ?.mid;
     final wiseUsdJpy = wiseUsdJpyQ?.mid;
     final wiseJpyCny = wiseJpyCnyQ?.mid;
-    // ↓ comparisons API 实测的"含 fee 实际汇率"（无则为 null，走估算回退）
-    final wiseUsdJpyEff = wiseUsdJpyQ?.effectiveRate;
-    final wiseJpyCnyEff = wiseJpyCnyQ?.effectiveRate;
     final visaUsdCny = q('Visa', 'USD/CNY')?.mid;
     final binanceBlueDiamond = q('Binance-蓝钻', 'USDT/CNY')?.mid;
     final binanceBlock = q('Binance-大宗', 'USDT/CNY')?.mid;
@@ -93,72 +90,100 @@ class ForecastService {
     }
 
     // --- 两段渠道 USDT → JPY → CNY ---
+    //
+    // leg1 (USDT/USD → JPY): 共用 Wise（用户实际把 U 变 JPY 的最常见路径）
+    //   - 若拉到 Wise USD/JPY 线性 fee 模型 → fee = a + b × usdt (内扣, USD)
+    //     真正进入下一段的 JPY = (usdt - fee_usd) × wiseUsdJpyMid
+    //   - 否则 fallback: 不扣 leg1 fee, 用 mid 直接算 (高估约 0.4-1%)
     if (wiseUsdJpy != null) {
-      // leg1 (USDT/USD → JPY): 优先用 Wise comparisons 实测，否则 fallback mid
-      final leg1Rate = wiseUsdJpyEff ?? wiseUsdJpy;
-      final leg1IsMeasured = wiseUsdJpyEff != null;
-      final leg1Label = leg1IsMeasured ? 'Wise 实测' : 'Wise mid';
+      final leg1FeeUsd = wiseUsdJpyQ?.feeFor(usdt.toDouble()) ?? 0;
+      final usdEffective = (usdt - leg1FeeUsd).clamp(0.0, double.infinity);
+      final jpyGross = usdEffective * wiseUsdJpy;
+      final leg1Measured = wiseUsdJpyQ?.isMeasured ?? false;
+      final leg1Label = leg1Measured
+          ? 'Wise 实测扣 ${leg1FeeUsd.toStringAsFixed(2)} USD'
+          : 'Wise mid (fee 不可知)';
 
       for (final c in kChannels.where((c) => c.twoHop)) {
         double? leg2Rate;
         String leg2Label;
-        bool leg2IsMeasured = false;
-        // 当 leg2 走 comparisons 实测，platformFee 已经在 effectiveRate 里 → 置 0
-        double effectivePlatformFee = c.platformFeeJpy;
+        bool leg2Measured = false;
+        // 实际从 JPY 端扣的 fee（外扣是固定 platformFee, 内扣按线性模型）
+        double leg2FeeJpy = 0;
+        // 渠道汇率类型说明（用于 breakdown）
+        String leg2RateSource = '';
 
         switch (c.jpyCnyRateSource) {
+          // === 实测牌价 + 外扣固定 fee ===
           case '熊猫速汇':
             leg2Rate = pandaJpyCny;
-            leg2Label = '熊猫 实测牌价';
-            leg2IsMeasured = true;
+            leg2Label = '熊猫平台牌价';
+            leg2RateSource = '熊猫 API';
+            leg2Measured = true;
+            leg2FeeJpy = c.platformFeeJpy;
             break;
           case '中行(日本)':
             leg2Rate = bocJpyCny;
-            leg2Label = '中行 实测牌价';
-            leg2IsMeasured = true;
+            leg2Label = '中行牌价';
+            leg2RateSource = '熊猫 API · 中行';
+            leg2Measured = true;
+            leg2FeeJpy = c.platformFeeJpy;
             break;
           case 'Seven Bank':
             leg2Rate = sevenBankJpyCny;
-            leg2Label = '7Bank 实测牌价';
-            leg2IsMeasured = true;
+            leg2Label = '7Bank 牌价';
+            leg2RateSource = '熊猫 API · 7Bank';
+            leg2Measured = true;
+            leg2FeeJpy = c.platformFeeJpy;
             break;
+          // === 无自家牌价 API ===
           default:
-            // Wise(JPY) / JRF Wallet 没有自家牌价 API
-            if (c.name == 'Wise(JPY)' && wiseJpyCnyEff != null) {
-              // Wise comparisons 实测，含 fee
-              leg2Rate = wiseJpyCnyEff;
-              leg2Label = 'Wise comparisons 实测';
-              leg2IsMeasured = true;
-              effectivePlatformFee = 0; // fee 已在 effectiveRate
+            if (c.name == 'Wise(JPY)' && wiseJpyCnyQ != null && wiseJpyCnyQ.isMeasured) {
+              // Wise 实测线性 fee 模型 (内扣)
+              // 用 JPY 端实测 fee 公式，先算 fee 再用 mid 换
+              final estJpy = (jpyGross - c.atmFeeJpy).clamp(0.0, double.infinity);
+              final feeJpy = wiseJpyCnyQ.feeFor(estJpy) ?? c.platformFeeJpy;
+              leg2FeeJpy = feeJpy;
+              leg2Rate = wiseJpyCny; // 用 mid 单独扣 fee（不再用 effectiveRate 防止 double-count）
+              leg2Label = 'Wise mid';
+              leg2RateSource = 'Wise comparisons API';
+              leg2Measured = true;
+            } else if (c.name == '邮局(JPY)') {
+              // 邮局: 外扣 165 + Wise mid 减 TTS spread 估算
+              leg2FeeJpy = c.platformFeeJpy;
+              leg2Rate = wiseJpyCny != null ? wiseJpyCny * (1 - c.markupPct) : null;
+              leg2Label = 'Wise mid − ${(c.markupPct * 100).toStringAsFixed(1)}% TTS';
+              leg2RateSource = 'Wise mid · TTS 估算';
+              leg2Measured = false;
             } else {
-              // JRF（无 API）/ Wise 回退（API 失败）→ mid - 内置估算 markup
-              leg2Rate = wiseJpyCny != null
-                  ? wiseJpyCny * (1 - c.markupPct)
-                  : null;
-              leg2Label =
-                  'Wise mid − ${(c.markupPct * 100).toStringAsFixed(2)}% (估算)';
-              leg2IsMeasured = false;
+              // JRF (无 API) / Wise fallback / 其他
+              leg2FeeJpy = c.platformFeeJpy;
+              leg2Rate = wiseJpyCny != null ? wiseJpyCny * (1 - c.markupPct) : null;
+              leg2Label = 'Wise mid − ${(c.markupPct * 100).toStringAsFixed(2)}%';
+              leg2RateSource = '内置估算';
+              leg2Measured = false;
             }
         }
         if (leg2Rate == null) continue;
 
-        final jpyGross = usdt * leg1Rate;
-        final jpyAfterAtm = jpyGross - c.atmFeeJpy;
-        final jpyAfterPlatform = jpyAfterAtm - effectivePlatformFee;
+        final jpyAfterAtm = (jpyGross - c.atmFeeJpy).clamp(0.0, double.infinity);
+        final jpyAfterPlatform = (jpyAfterAtm - leg2FeeJpy).clamp(0.0, double.infinity);
         final cnyNet = jpyAfterPlatform * leg2Rate;
 
         rows.add(ForecastRow(
           channel: c,
           cnyNet: cnyNet,
           jpyIn: jpyGross,
-          isMeasured: leg1IsMeasured && leg2IsMeasured,
+          isMeasured: leg1Measured && leg2Measured,
           breakdown: [
-            '$usdt × ${leg1Rate.toStringAsFixed(2)} ($leg1Label) = ¥${jpyGross.toStringAsFixed(0)} JPY',
+            '$usdt USDT − 扣 ${leg1FeeUsd.toStringAsFixed(2)} USD ($leg1Label) → '
+                '${usdEffective.toStringAsFixed(2)} × ${wiseUsdJpy.toStringAsFixed(2)} '
+                '= ¥${jpyGross.toStringAsFixed(0)} JPY',
             if (c.atmFeeJpy > 0)
-              '减 ¥${c.atmFeeJpy.toStringAsFixed(0)} ATM 振込费',
-            if (effectivePlatformFee > 0)
-              '减 ¥${effectivePlatformFee.toStringAsFixed(0)} 平台手续费',
-            '× ${leg2Rate.toStringAsFixed(5)} ($leg2Label) = ¥${cnyNet.toStringAsFixed(2)} CNY',
+              '减 ¥${c.atmFeeJpy.toStringAsFixed(0)} 入金振込费 (邮局默认; ATM 略高)',
+            '减 ¥${leg2FeeJpy.toStringAsFixed(0)} ${c.feeKind.longLabel} 平台手续费',
+            '× ${leg2Rate.toStringAsFixed(5)} ($leg2Label · 来源 $leg2RateSource) '
+                '= ¥${cnyNet.toStringAsFixed(2)} CNY',
           ],
         ));
       }

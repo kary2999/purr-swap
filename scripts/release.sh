@@ -54,6 +54,13 @@ fi
 [ "$NEW_VER" != "$CUR_VER" ] && sed -i '' "s/^version: .*/version: $NEW_VER/" pubspec.yaml
 VER=$NEW_VER
 
+# 同步 lib/version.dart (app 内自更新检测要读这个常量)
+cat > lib/version.dart <<DART_EOF
+/// 当前 app 版本号。
+/// 由 scripts/release.sh 自动 sed 写入，不要手动改。
+const String kAppVersion = '$VER';
+DART_EOF
+
 # ========== Flutter builds ==========
 step "Flutter build web"
 flutter build web --release --pwa-strategy=none --base-href=/ 2>&1 | tail -2
@@ -343,6 +350,27 @@ zip -r "$ZIP" \
   "README.txt" > /dev/null
 shasum -a 256 "$ZIP" > "$ZIP.sha256"
 cd "$ROOT"
+
+# ========== version.json (app 自更新检测) ==========
+step "生成 dist/version.json"
+APK_SHA=$(awk '{print $1}' "dist/PurrSwap-v${VER}-Android.apk.sha256")
+DMG_SHA=$(awk '{print $1}' "dist/PurrSwap-v${VER}-macOS.dmg.sha256")
+ZIP_SHA=$(awk '{print $1}' "dist/PurrSwap-v${VER}-release.zip.sha256")
+cat > dist/version.json <<JSON_EOF
+{
+  "latest": "${VER}",
+  "android": "https://github.com/kary2999/purr-swap/raw/releases/PurrSwap-v${VER}-Android.apk",
+  "macos": "https://github.com/kary2999/purr-swap/raw/releases/PurrSwap-v${VER}-macOS.dmg",
+  "zip": "https://github.com/kary2999/purr-swap/raw/releases/PurrSwap-v${VER}-release.zip",
+  "web": "https://kary2999.github.io/purr-swap/",
+  "notes": "v${VER} (构建于 $(date '+%Y-%m-%d'))",
+  "sha256": {
+    "android": "${APK_SHA}",
+    "macos": "${DMG_SHA}",
+    "zip": "${ZIP_SHA}"
+  }
+}
+JSON_EOF
 
 # ========== Done ==========
 step "✨ v${VER} 发布完成"

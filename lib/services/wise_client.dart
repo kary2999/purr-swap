@@ -4,41 +4,93 @@ import '../models/quote.dart';
 
 /// Wise 客户端。
 ///
-/// **优先**: api.wise.com/v3/comparisons —— 拉到 Wise 自家**真实 fee + 实际汇率**
+/// **优先**: `api.wise.com/v3/comparisons` —— Wise 自家**真实 fee + 实际汇率**
 ///   返回结构: providers[].alias=='wise' 的 quotes[0] 包含
-///     - rate            (Wise 真实成交汇率, 接近 mid)
-///     - fee             (sample sendAmount 下的实际 fee, source 货币)
+///     - rate            (Wise 实际成交汇率, 接近 mid)
+///     - fee             (sample sendAmount 下的实际 fee, source 币种)
 ///     - receivedAmount  (扣 fee 后用户拿到的 target 金额)
-///   → 含 fee 的 effectiveRate = receivedAmount / sendAmount
 ///
-/// **回退**: wise.com/rates/live —— 只能拿 mid-market 中间价（无 fee）
+/// **关键**: Wise fee 是阶梯式 (`fee ≈ a + b × amount`)，单 sample 外推到其他金额会严重偏差。
+/// 实测拟合极好 (JPY/CNY: 10k→708, 200k→3072, 1M→13027；线性 R² ≈ 1.000)
+/// 因此本 client **拉小+大两个 sample**，建立线性 fee 模型存进 [Quote.feeIntercept] / [Quote.feeSlope]。
+///
+/// **回退**: `wise.com/rates/live` —— 只能拿 mid-market（无 fee）
 class WiseClient {
   static const _ua =
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36';
 
-  /// 拉取一个币对的 Wise 报价。优先返回**含 fee 的实测值**。
-  ///
-  /// [sampleAmount] 用于 comparisons API 的抽样金额。fee 通常按金额阶梯，
-  /// 1000 source 是个合理 sample，对应 fee% 可以外推到其他金额。
+  /// 拉一个币对的 Wise 报价（含线性 fee 模型）。
   static Future<Quote> fetch({
     String source = 'USD',
     String target = 'CNY',
-    double sampleAmount = 1000,
   }) async {
-    if (source == 'JPY') {
-      // JPY 金额单位太小，1000 JPY 抽样 fee 比例严重偏高。改用 100000。
-      if (sampleAmount == 1000) sampleAmount = 100000;
+    // 按 source 货币选两个合理 sample 金额(小+大，跨越用户常见金额)
+    final samples = _samplesFor(source);
+
+    // 并行拉两个 sample
+    final results = await Future.wait([
+      _fetchOneSample(source, target, samples[0]).catchError((_) => null),
+      _fetchOneSample(source, target, samples[1]).catchError((_) => null),
+    ]);
+    final s1 = results[0];
+    final s2 = results[1];
+
+    if (s1 == null && s2 == null) {
+      // 两个 sample 都失败 → fallback mid-only
+      return _fetchMidOnly(source, target);
     }
-    // 1) 优先 comparisons (含 fee)
-    try {
-      final cmp = await _fetchComparison(source, target, sampleAmount);
-      if (cmp != null) return cmp;
-    } catch (_) {}
-    // 2) fallback mid-market only
-    return _fetchMidOnly(source, target);
+
+    // 至少有一个 sample 可用
+    final use = s2 ?? s1!;
+    final mid = use['rate'] as double;
+    double? feeIntercept;
+    double? feeSlope;
+
+    if (s1 != null && s2 != null) {
+      // 线性拟合 fee = a + b × amount，两点确定一条线
+      final x1 = samples[0], x2 = samples[1];
+      final f1 = s1['fee'] as double, f2 = s2['fee'] as double;
+      if (x2 != x1) {
+        feeSlope = (f2 - f1) / (x2 - x1);
+        feeIntercept = f1 - feeSlope * x1;
+      }
+    }
+
+    final sampleAmount = samples[1]; // 用大 sample 作为参考
+    final effectiveRate = use['receivedAmount'] / sampleAmount;
+
+    return Quote(
+      source: 'Wise',
+      pair: '$source/$target',
+      mid: mid,
+      effectiveRate: effectiveRate,
+      fee: use['fee'] as double,
+      feePctApprox: (use['fee'] as double) / sampleAmount,
+      sampleAmount: sampleAmount,
+      feeIntercept: feeIntercept,
+      feeSlope: feeSlope,
+      isMeasured: true,
+      note: feeIntercept != null && feeSlope != null
+          ? '实测线性 fee = ${feeIntercept.toStringAsFixed(0)} + '
+              '${(feeSlope * 100).toStringAsFixed(3)}% (内扣)'
+          : '实测 (单点)',
+    );
   }
 
-  static Future<Quote?> _fetchComparison(
+  static List<double> _samplesFor(String source) {
+    switch (source) {
+      case 'JPY':
+        return [10000.0, 200000.0]; // 用户常见 1-20w JPY
+      case 'USD':
+      case 'EUR':
+      case 'GBP':
+        return [100.0, 5000.0];
+      default:
+        return [100.0, 5000.0];
+    }
+  }
+
+  static Future<Map<String, dynamic>?> _fetchOneSample(
       String source, String target, double amount) async {
     final url = Uri.parse(
       'https://api.wise.com/v3/comparisons/'
@@ -61,18 +113,7 @@ class WiseClient {
       final fee = _toD(q['fee']);
       final received = _toD(q['receivedAmount']);
       if (rate == null || fee == null || received == null) return null;
-      final effective = amount > 0 ? received / amount : rate;
-      return Quote(
-        source: 'Wise',
-        pair: '$source/$target',
-        mid: rate,
-        effectiveRate: effective,
-        fee: fee,
-        feePctApprox: amount > 0 ? fee / amount : null,
-        sampleAmount: amount,
-        isMeasured: true,
-        note: 'fee $fee $source/$amount sample · 实测',
-      );
+      return {'rate': rate, 'fee': fee, 'receivedAmount': received};
     }
     return null;
   }
@@ -101,7 +142,7 @@ class WiseClient {
       pair: '$source/$target',
       mid: rate,
       isMeasured: false,
-      note: 'mid-market 中间价(comparisons API 不可用,fee 估算)',
+      note: 'mid-market only (comparisons API 不可用, fee 走内置估算)',
     );
   }
 

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -5,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/exchange_record.dart';
 import '../services/forecast.dart';
 import '../services/rate_cache.dart';
+import '../services/update_checker.dart';
 import '../theme/ios_theme.dart';
 import '../widgets/ios_widgets.dart';
 
@@ -18,11 +20,46 @@ class _ForecastPageState extends State<ForecastPage> {
   static const _presets = [100, 500, 1000, 5000, 10000];
   int _usdt = 1000;
   bool _loading = false;
+  UpdateInfo? _update;
+  bool _updateDismissed = false;
 
   @override
   void initState() {
     super.initState();
     if (!RateCache.instance.hasData) _refresh();
+    if (!kIsWeb) _checkUpdate(); // web 不需要(每次访问都是最新)
+  }
+
+  Future<void> _checkUpdate() async {
+    final info = await UpdateChecker.check();
+    if (!mounted || info == null || !info.hasUpdate || _updateDismissed) return;
+    setState(() => _update = info);
+  }
+
+  String? _platformDownloadUrl(UpdateInfo info) {
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return info.androidUrl;
+      case TargetPlatform.macOS:
+        return info.macosUrl;
+      default:
+        return info.webUrl ?? info.macosUrl ?? info.androidUrl;
+    }
+  }
+
+  Future<void> _onUpdateTap() async {
+    final info = _update;
+    if (info == null) return;
+    final url = _platformDownloadUrl(info);
+    if (url == null) return;
+    final uri = Uri.parse(url);
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      await Clipboard.setData(ClipboardData(text: url));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('无法打开浏览器,已复制下载链接')),
+      );
+    }
   }
 
   Future<void> _refresh() async {
@@ -58,6 +95,7 @@ class _ForecastPageState extends State<ForecastPage> {
                     : IOSNavIcon(Icons.refresh, onTap: _refresh),
               ],
             ),
+            if (_update != null) _buildUpdateBanner(_update!),
             _ticker(quotes, lastFetch),
             HeroInputCard(
               label: 'USDT INPUT',
@@ -159,6 +197,8 @@ class _ForecastPageState extends State<ForecastPage> {
           : 'Wise mid + 估算 fee(API 失败回退)';
     }
     if (name.contains('JRF')) return '内置估算(无公开 API)';
+    if (name.contains('邮局') || name.contains('Japan Post'))
+      return 'Wise mid · TTS spread 估算';
     if (name.contains('线下')) return 'Wise 中间价(无 fee 乐观)';
     return 'Wise 中间价';
   }
@@ -334,6 +374,58 @@ class _ForecastPageState extends State<ForecastPage> {
         await Clipboard.setData(ClipboardData(text: url));
       }
     }
+  }
+
+  /// app 自更新提示横幅 — 检测到 releases 分支 version.json 有新版时显示
+  Widget _buildUpdateBanner(UpdateInfo info) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: IOS.blue.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: IOS.blue.withValues(alpha: 0.35), width: 0.6),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: _onUpdateTap,
+        child: Row(
+          children: [
+            const Icon(Icons.system_update, color: IOS.blue, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('新版 v${info.latestVersion} 可用',
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: IOS.blue)),
+                  const SizedBox(height: 2),
+                  Text(
+                      (info.notes ?? '').isEmpty
+                          ? '当前 v${info.currentVersion} · 点击下载安装'
+                          : '${info.notes}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11, color: IOS.gray)),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close, size: 18, color: IOS.gray),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              onPressed: () => setState(() {
+                _update = null;
+                _updateDismissed = true;
+              }),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _emptyState() => Container(
