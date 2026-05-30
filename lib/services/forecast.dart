@@ -9,6 +9,9 @@ class ForecastRow {
   final List<String> breakdown; // 费用明细
   final double? pctVsBest;      // 相对最优渠道差 %
   final bool isMeasured;        // 全链路是否都是实测（vs 内置估算）
+  // CNY → CNY 全链路损耗（用户真实场景: CNY → USDT → JPY → CNY）
+  final double? inputCny;       // 投入 CNY (= usdt × cnyToUsdtRate)
+  final double? cnyLossPct;     // 损耗% = (inputCny - cnyNet) / inputCny × 100
   ForecastRow({
     required this.channel,
     required this.cnyNet,
@@ -16,14 +19,23 @@ class ForecastRow {
     this.breakdown = const [],
     this.pctVsBest,
     this.isMeasured = true,
+    this.inputCny,
+    this.cnyLossPct,
   });
 }
 
 class ForecastService {
   /// 输入 USDT 数量 + 当前所有报价,输出每条渠道预计到手 CNY。
+  ///
+  /// [cnyToUsdtRate] = 用户当时买 USDT 时的 CNY/USDT 单价（如 7.20）。
+  /// 用于反推 CNY → CNY 全链路损耗：
+  ///   inputCny = usdt × cnyToUsdtRate
+  ///   cnyLossPct = (inputCny - cnyNet) / inputCny × 100
+  /// null 时按优先级取默认: Binance 蓝钻 > Binance 大宗 > OKX > Wise USD/CNY > 7.20
   static List<ForecastRow> forecast({
     required double usdt,
     required List<Quote> quotes,
+    double? cnyToUsdtRate,
   }) {
     // 索引查价
     Quote? q(String source, String pair) =>
@@ -189,20 +201,33 @@ class ForecastService {
       }
     }
 
-    // 按到手 CNY 降序,标最优差
+    // === CNY → USDT 默认汇率（用户的 leg0：在国内买 U 的成本）===
+    // 优先用用户手输; 否则按 Binance 蓝钻 > 大宗 > OKX > Wise USD/CNY > 7.20 兜底
+    final defaultCnyRate = cnyToUsdtRate ??
+        binanceBlueDiamond ??
+        binanceBlock ??
+        okx ??
+        wiseUsdCny ??
+        7.20;
+    final inputCny = usdt * defaultCnyRate;
+
+    // 按到手 CNY 降序,标最优差 + 算 CNY 全链路损耗
     rows.sort((a, b) => b.cnyNet.compareTo(a.cnyNet));
     if (rows.isNotEmpty) {
       final best = rows.first.cnyNet;
       for (int i = 0; i < rows.length; i++) {
         final r = rows[i];
         final pct = best > 0 ? (r.cnyNet - best) / best * 100 : 0.0;
+        final lossPct = inputCny > 0 ? (inputCny - r.cnyNet) / inputCny * 100 : null;
         rows[i] = ForecastRow(
             channel: r.channel,
             cnyNet: r.cnyNet,
             jpyIn: r.jpyIn,
             breakdown: r.breakdown,
             pctVsBest: pct,
-            isMeasured: r.isMeasured);
+            isMeasured: r.isMeasured,
+            inputCny: inputCny,
+            cnyLossPct: lossPct);
       }
     }
     return rows;

@@ -22,12 +22,21 @@ class _ForecastPageState extends State<ForecastPage> {
   bool _loading = false;
   UpdateInfo? _update;
   bool _updateDismissed = false;
+  // CNY → USDT 买入价（leg0）。null = 用 Binance 蓝钻实时；显式输入 = 用户的真实成本
+  final TextEditingController _cnyRateController = TextEditingController();
+  double? _cnyToUsdtRate;
 
   @override
   void initState() {
     super.initState();
     if (!RateCache.instance.hasData) _refresh();
     if (!kIsWeb) _checkUpdate(); // web 不需要(每次访问都是最新)
+  }
+
+  @override
+  void dispose() {
+    _cnyRateController.dispose();
+    super.dispose();
   }
 
   Future<void> _checkUpdate() async {
@@ -73,7 +82,11 @@ class _ForecastPageState extends State<ForecastPage> {
   @override
   Widget build(BuildContext c) {
     final quotes = RateCache.instance.snapshot;
-    final rows = ForecastService.forecast(usdt: _usdt.toDouble(), quotes: quotes);
+    final rows = ForecastService.forecast(
+      usdt: _usdt.toDouble(),
+      quotes: quotes,
+      cnyToUsdtRate: _cnyToUsdtRate,
+    );
     final lastFetch = RateCache.instance.lastFetch;
 
     return Scaffold(
@@ -105,6 +118,7 @@ class _ForecastPageState extends State<ForecastPage> {
               activePreset: _usdt,
               onPresetTap: (v) => setState(() => _usdt = v),
             ),
+            _cnyRateInput(quotes, rows.isNotEmpty ? rows.first.inputCny : null),
             if (quotes.isEmpty && !_loading)
               _emptyState()
             else
@@ -176,8 +190,11 @@ class _ForecastPageState extends State<ForecastPage> {
     final src = _dataSource(r);
     final flag = r.isMeasured ? '✓实测' : '⚠估算';
     final tag = r.channel.tagline;
-    if (tag.isNotEmpty) return '$tag · $src · $flag';
-    return '$src · $flag';
+    final loss = r.cnyLossPct != null
+        ? ' · CNY 全链路损耗 ${r.cnyLossPct!.toStringAsFixed(2)}%'
+        : '';
+    if (tag.isNotEmpty) return '$tag · $src · $flag$loss';
+    return '$src · $flag$loss';
   }
 
   /// 数据来源说明 —— 显式区分 "实测" vs "估算"，方便用户判断数字可信度
@@ -374,6 +391,114 @@ class _ForecastPageState extends State<ForecastPage> {
         await Clipboard.setData(ClipboardData(text: url));
       }
     }
+  }
+
+  /// CNY → USDT 买入价输入卡 — 用户在国内买 U 的真实价格（leg0 成本）。
+  /// 空白时自动用 Binance 蓝钻实时价兜底。
+  Widget _cnyRateInput(List quotes, double? currentInputCny) {
+    final binance = quotes
+        .where((q) => q.source == 'Binance-蓝钻' && q.pair == 'USDT/CNY')
+        .firstOrNull;
+    final wiseUsdCny = quotes
+        .where((q) => q.source == 'Wise' && q.pair == 'USD/CNY')
+        .firstOrNull;
+    final defaultRate = binance?.mid ?? wiseUsdCny?.mid ?? 7.20;
+    final defaultSource = binance != null
+        ? 'Binance 蓝钻'
+        : wiseUsdCny != null
+            ? 'Wise mid (无 Binance 数据)'
+            : '兜底 7.20';
+    final activeRate = _cnyToUsdtRate ?? defaultRate;
+    final hasInput = _cnyToUsdtRate != null;
+    final inputCny = currentInputCny ?? (_usdt * activeRate);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(IOS.radCard),
+        border: Border.all(color: IOS.separator, width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('CNY / USDT 买入价 (leg0)',
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: IOS.textSecondary,
+                      fontWeight: FontWeight.w500)),
+              Text(
+                  '折合投入 ¥${NumberFormat('#,##0.00').format(inputCny)}',
+                  style: const TextStyle(
+                      fontSize: 13, color: IOS.blue, fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _cnyRateController,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    hintText: defaultRate.toStringAsFixed(4),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide:
+                            BorderSide(color: IOS.separator, width: 0.5)),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide:
+                            BorderSide(color: IOS.separator, width: 0.5)),
+                    focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide:
+                            const BorderSide(color: IOS.blue, width: 1)),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 11),
+                    suffixText: 'CNY/USDT',
+                    suffixStyle:
+                        const TextStyle(fontSize: 12, color: IOS.gray),
+                  ),
+                  onChanged: (v) => setState(() {
+                    final r = double.tryParse(v.trim());
+                    _cnyToUsdtRate = (r != null && r > 0) ? r : null;
+                  }),
+                ),
+              ),
+              if (hasInput) ...[
+                const SizedBox(width: 6),
+                IconButton(
+                  icon: const Icon(Icons.clear, size: 18, color: IOS.gray),
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 32, minHeight: 32),
+                  onPressed: () {
+                    _cnyRateController.clear();
+                    setState(() => _cnyToUsdtRate = null);
+                  },
+                ),
+              ],
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              hasInput
+                  ? '✓ 使用你的成交价 ¥${activeRate.toStringAsFixed(4)}'
+                  : '空白 = 默认 $defaultSource ¥${defaultRate.toStringAsFixed(4)}',
+              style: const TextStyle(fontSize: 11, color: IOS.gray),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   /// app 自更新提示横幅 — 检测到 releases 分支 version.json 有新版时显示
