@@ -62,8 +62,19 @@ const String kAppVersion = '$VER';
 DART_EOF
 
 # ========== Flutter builds ==========
-step "Flutter build web"
-flutter build web --release --pwa-strategy=none --base-href=/ 2>&1 | tail -2
+step "Flutter build web (本地 canvaskit, 避开 gstatic CDN 跨域)"
+# --no-web-resources-cdn: canvaskit.wasm 本地化, 否则 chrome --app 模式下
+# CORS 注入脚本会把 https://www.gstatic.com/.../canvaskit.wasm 重写到 /proxy/,
+# 但 WebAssembly.compileStreaming 对 chunked 响应不友好 → 白屏
+flutter build web --release --pwa-strategy=none --base-href=/ \
+  --no-web-resources-cdn 2>&1 | tail -2
+
+# 修 index.html 标题 (Flutter web 默认从 pubspec.name 取 = currency_exchange)
+sed -i '' \
+  -e 's|<title>currency_exchange</title>|<title>Purr Swap · 换金所</title>|' \
+  -e 's|content="currency_exchange"|content="Purr Swap · 换金所"|g' \
+  -e 's|content="A new Flutter project."|content="USDT 多渠道比价 + 记账 + 风险提示"|' \
+  build/web/index.html
 
 # 注入 CORS 代理
 python3 - <<'PY'

@@ -27,8 +27,18 @@ step(){ echo -e "\n${G}==> $*${N}"; }
 MODE=${1:-}
 BASE_HREF=${BASE_HREF:-/purr-swap/}
 
-step "Flutter build web (base-href=$BASE_HREF)"
-flutter build web --release --pwa-strategy=none --base-href="$BASE_HREF" 2>&1 | tail -2
+step "Flutter build web (base-href=$BASE_HREF, 本地 canvaskit)"
+# --no-web-resources-cdn: canvaskit.wasm 本地化 — Pages 上 gstatic 跨域虽然 CORS ok,
+# 但本地化更稳, 离线也能跑
+flutter build web --release --pwa-strategy=none --base-href="$BASE_HREF" \
+  --no-web-resources-cdn 2>&1 | tail -2
+
+# 修 index.html 标题
+sed -i '' \
+  -e 's|<title>currency_exchange</title>|<title>Purr Swap · 换金所</title>|' \
+  -e 's|content="currency_exchange"|content="Purr Swap · 换金所"|g' \
+  -e 's|content="A new Flutter project."|content="USDT 多渠道比价 + 记账 + 风险提示"|' \
+  build/web/index.html
 
 # 给 build/web 加个 .nojekyll，让 GitHub Pages 不要 Jekyll 处理（保留 _flutter 等下划线开头目录）
 touch build/web/.nojekyll
