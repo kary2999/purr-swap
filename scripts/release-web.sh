@@ -40,6 +40,30 @@ sed -i '' \
   -e 's|content="A new Flutter project."|content="USDT 多渠道比价 + 记账 + 风险提示"|' \
   build/web/index.html
 
+# === Web 版自动更新 (Cache Busting) ===
+# 让用户每次访问 https://kary2999.github.io/purr-swap/ 自动拿到最新版,
+# 不必手动 Cmd+Shift+R。原理:
+#   1) index.html 设 no-cache → 浏览器每次重新拉 index
+#   2) 给 flutter_bootstrap.js 引用加 ?v=$VER → 版本变就拉新文件
+#   3) flutter_bootstrap.js 内部加载 main.dart.js 也加 ?v=$VER → 同上
+CUR_VER=$(grep '^version:' pubspec.yaml | awk '{print $2}' | tr -d '\r')
+step "Web 自更新: cache buster v=$CUR_VER"
+
+# index.html: 注入 no-cache meta (放 charset 后,避免编码问题)
+sed -i '' "/<meta charset/a\\
+  <meta http-equiv=\"cache-control\" content=\"no-cache, no-store, must-revalidate\">\\
+  <meta http-equiv=\"pragma\" content=\"no-cache\">\\
+  <meta http-equiv=\"expires\" content=\"0\">
+" build/web/index.html
+
+# index.html: flutter_bootstrap.js?v=$VER
+sed -i '' "s|flutter_bootstrap\\.js\"|flutter_bootstrap.js?v=$CUR_VER\"|g" \
+  build/web/index.html
+
+# flutter_bootstrap.js: 内部 "main.dart.js" 字面量加 ?v=$VER
+sed -i '' "s|\"main\\.dart\\.js\"|\"main.dart.js?v=$CUR_VER\"|g" \
+  build/web/flutter_bootstrap.js
+
 # 给 build/web 加个 .nojekyll，让 GitHub Pages 不要 Jekyll 处理（保留 _flutter 等下划线开头目录）
 touch build/web/.nojekyll
 

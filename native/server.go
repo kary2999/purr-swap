@@ -9,6 +9,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -16,6 +17,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -79,6 +82,88 @@ func proxy(w http.ResponseWriter, r *http.Request) {
 	io.Copy(w, resp.Body)
 }
 
+// /api/download?url=<urlencoded> 下载文件到 ~/Downloads + open(dmg 自动挂载 / apk 走系统安装)
+// 这是 app 内"一键在线更新"入口 — Flutter 端调用, Server 在本机替用户做下载/打开。
+func downloadAndOpen(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	raw := r.URL.Query().Get("url")
+	if raw == "" {
+		http.Error(w, `{"ok":false,"err":"missing url"}`, http.StatusBadRequest)
+		return
+	}
+	target, err := url.QueryUnescape(raw)
+	if err != nil {
+		target = raw
+	}
+	pu, err := url.Parse(target)
+	if err != nil {
+		http.Error(w, `{"ok":false,"err":"bad url"}`, http.StatusBadRequest)
+		return
+	}
+	parts := strings.Split(pu.Path, "/")
+	fn := parts[len(parts)-1]
+	if fn == "" {
+		fn = "purr-update.bin"
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		home = "/tmp"
+	}
+	dir := filepath.Join(home, "Downloads")
+	_ = os.MkdirAll(dir, 0o755)
+	dst := filepath.Join(dir, fn)
+
+	// 长下载 (~50MB): 用独立 client + 大超时
+	dlClient := &http.Client{Timeout: 5 * time.Minute}
+	resp, err := dlClient.Get(target)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadGateway)
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": false, "err": "fetch: " + err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadGateway)
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": false, "err": fmt.Sprintf("upstream %d", resp.StatusCode)})
+		return
+	}
+
+	f, err := os.Create(dst)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": false, "err": "create: " + err.Error()})
+		return
+	}
+	written, copyErr := io.Copy(f, resp.Body)
+	_ = f.Close()
+	if copyErr != nil {
+		_ = os.Remove(dst)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": false, "err": "write: " + copyErr.Error()})
+		return
+	}
+	// 解隔离 (macOS Gatekeeper)
+	_ = exec.Command("xattr", "-d", "com.apple.quarantine", dst).Run()
+	// 打开 — macOS 会自动挂载 dmg + 弹出 Finder 让用户拖拽
+	_ = exec.Command("open", dst).Start()
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"ok":    true,
+		"path":  dst,
+		"bytes": written,
+	})
+}
+
 func wrap(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		setCORS(w)
@@ -102,6 +187,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/proxy/", proxy)
+	mux.HandleFunc("/api/download", downloadAndOpen)
 
 	fs := http.FileServer(http.Dir(webDir))
 	mux.Handle("/", wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

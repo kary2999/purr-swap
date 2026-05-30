@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/exchange_record.dart';
@@ -22,15 +24,28 @@ class _ForecastPageState extends State<ForecastPage> {
   bool _loading = false;
   UpdateInfo? _update;
   bool _updateDismissed = false;
+  bool _updateBusy = false;
   // CNY → USDT 买入价（leg0）。null = 用 Binance 蓝钻实时；显式输入 = 用户的真实成本
   final TextEditingController _cnyRateController = TextEditingController();
   double? _cnyToUsdtRate;
+
+  // 在 macOS .app (chrome --app 模式) 里 Flutter 跑的是 web build, kIsWeb=true,
+  // 但 location 是 127.0.0.1, 跟真 web(github.io) 区分一下
+  bool get _isLocalApp {
+    if (!kIsWeb) return false;
+    final h = Uri.base.host;
+    return h == '127.0.0.1' || h == 'localhost' || h.isEmpty;
+  }
+
+  bool get _isTrueWebOnly =>
+      kIsWeb && !_isLocalApp; // github.io 等公网部署 = 每次访问即最新, 不需要 update banner
 
   @override
   void initState() {
     super.initState();
     if (!RateCache.instance.hasData) _refresh();
-    if (!kIsWeb) _checkUpdate(); // web 不需要(每次访问都是最新)
+    // chrome --app 模式也要检测更新 (之前误用 !kIsWeb 把本地 app 排除了)
+    if (!_isTrueWebOnly) _checkUpdate();
   }
 
   @override
@@ -46,6 +61,7 @@ class _ForecastPageState extends State<ForecastPage> {
   }
 
   String? _platformDownloadUrl(UpdateInfo info) {
+    if (_isLocalApp) return info.macosUrl; // chrome --app 在 macOS .app 内
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return info.androidUrl;
@@ -56,9 +72,51 @@ class _ForecastPageState extends State<ForecastPage> {
     }
   }
 
+  /// 一键在线更新 — 仅 macOS .app (本地有 Go server 跑 /api/download)
+  /// 服务端下载 dmg 到 ~/Downloads + 自动 open (挂载) → Finder 弹窗供拖拽
+  Future<void> _onlineUpdate(UpdateInfo info) async {
+    final url = _platformDownloadUrl(info);
+    if (url == null) return;
+    setState(() => _updateBusy = true);
+    try {
+      final resp = await http
+          .get(Uri.parse('/api/download?url=${Uri.encodeComponent(url)}'))
+          .timeout(const Duration(minutes: 5));
+      if (resp.statusCode == 200) {
+        final j = jsonDecode(resp.body) as Map<String, dynamic>;
+        if (j['ok'] == true && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✓ dmg 已下载并挂载,在 Finder 把 Purr Swap 拖到 Applications 替换即完成'),
+              duration: Duration(seconds: 6),
+            ),
+          );
+          return;
+        }
+        throw Exception(j['err']?.toString() ?? 'unknown');
+      }
+      throw Exception('HTTP ${resp.statusCode}');
+    } catch (e) {
+      if (!mounted) return;
+      // 退路: 跳浏览器
+      final uri = Uri.parse(url);
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('自动下载失败,改走浏览器: $e'),
+            duration: const Duration(seconds: 4)),
+      );
+    } finally {
+      if (mounted) setState(() => _updateBusy = false);
+    }
+  }
+
   Future<void> _onUpdateTap() async {
     final info = _update;
     if (info == null) return;
+    if (_isLocalApp) {
+      await _onlineUpdate(info);
+      return;
+    }
     final url = _platformDownloadUrl(info);
     if (url == null) return;
     final uri = Uri.parse(url);
@@ -538,6 +596,29 @@ class _ForecastPageState extends State<ForecastPage> {
                 ],
               ),
             ),
+            if (_isLocalApp)
+              SizedBox(
+                height: 30,
+                child: FilledButton.tonal(
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    minimumSize: const Size(0, 30),
+                    backgroundColor: IOS.blue.withValues(alpha: 0.2),
+                  ),
+                  onPressed: _updateBusy ? null : _onUpdateTap,
+                  child: _updateBusy
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: IOS.blue))
+                      : const Text('立即更新',
+                          style: TextStyle(
+                              color: IOS.blue,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600)),
+                ),
+              ),
             IconButton(
               icon: const Icon(Icons.close, size: 18, color: IOS.gray),
               padding: EdgeInsets.zero,

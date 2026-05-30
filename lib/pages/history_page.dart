@@ -342,7 +342,7 @@ class _EditDialog extends StatefulWidget {
 }
 
 class _EditDialogState extends State<_EditDialog> {
-  late TextEditingController _usdt, _jpy, _cny, _note;
+  late TextEditingController _usdt, _jpy, _cny, _cnyRate, _note;
   late DateTime _at;
   late String _recipient;
 
@@ -353,6 +353,8 @@ class _EditDialogState extends State<_EditDialog> {
     _usdt = TextEditingController(text: r.usdtAmount.toString());
     _jpy = TextEditingController(text: r.jpyAmount?.toStringAsFixed(0) ?? '');
     _cny = TextEditingController(text: r.cnyReceived.toString());
+    _cnyRate = TextEditingController(
+        text: r.cnyToUsdtRate?.toStringAsFixed(4) ?? '');
     _note = TextEditingController(text: r.note);
     _at = r.at;
     _recipient = r.recipient;
@@ -363,6 +365,7 @@ class _EditDialogState extends State<_EditDialog> {
     _usdt.dispose();
     _jpy.dispose();
     _cny.dispose();
+    _cnyRate.dispose();
     _note.dispose();
     super.dispose();
   }
@@ -436,6 +439,14 @@ class _EditDialogState extends State<_EditDialog> {
             ),
             const SizedBox(height: 10),
             TextField(
+              controller: _cnyRate,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                  labelText: 'CNY/USDT 买入价 (留空=用市场 mid 兜底)',
+                  isDense: true),
+            ),
+            const SizedBox(height: 10),
+            TextField(
               controller: _note,
               decoration: const InputDecoration(labelText: '备注', isDense: true),
             ),
@@ -473,7 +484,10 @@ class _EditDialogState extends State<_EditDialog> {
                 cnyReceived: cny,
                 referenceRate: widget.record.referenceRate,
                 jpyCnyReference: widget.record.jpyCnyReference,
-                cnyToUsdtRate: widget.record.cnyToUsdtRate, // 保留旧字段不丢
+                cnyToUsdtRate: (() {
+                  final v = double.tryParse(_cnyRate.text.trim());
+                  return (v != null && v > 0) ? v : null;
+                })(),
                 recipient: _recipient,
                 note: _note.text.trim(),
               ),
