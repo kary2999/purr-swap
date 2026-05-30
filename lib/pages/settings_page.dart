@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/rate_cache.dart';
+import '../version.dart';
 import '../storage/local_store.dart';
 import '../theme/ios_theme.dart';
 import '../widgets/ios_widgets.dart';
@@ -285,11 +286,12 @@ class _SettingsPageState extends State<SettingsPage> {
     return IOSSection(
       header: '关于',
       children: [
-        const IOSRow(
+        IOSRow(
           leadingIcon: Icons.info_outline,
-          iconColors: [IOS.gray, Color(0xFF636366)],
+          iconColors: const [IOS.gray, Color(0xFF636366)],
           label: '版本',
-          trailing: Text('v0.2.0', style: TextStyle(fontSize: 14, color: IOS.gray)),
+          trailing: Text('v$kAppVersion',
+              style: const TextStyle(fontSize: 14, color: IOS.gray)),
         ),
         IOSRow(
           leadingIcon: Icons.menu_book,
@@ -385,8 +387,8 @@ class _VersionBadge extends StatelessWidget {
           color: IOS.blue.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Text('v0.2.0',
-            style: TextStyle(
+        child: Text('v$kAppVersion',
+            style: const TextStyle(
                 color: IOS.blue, fontSize: 11, fontWeight: FontWeight.w600)),
       );
 }
