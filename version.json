@@ -1,0 +1,13 @@
+{
+  "latest": "0.2.11",
+  "android": "https://github.com/kary2999/purr-swap/raw/releases/PurrSwap-v0.2.11-Android.apk",
+  "macos": "https://github.com/kary2999/purr-swap/raw/releases/PurrSwap-v0.2.11-macOS.dmg",
+  "zip": "https://github.com/kary2999/purr-swap/raw/releases/PurrSwap-v0.2.11-release.zip",
+  "web": "https://kary2999.github.io/purr-swap/",
+  "notes": "v0.2.11 (构建于 2026-05-30)",
+  "sha256": {
+    "android": "0909d9029b28b447f02e8166cd3e22f02d6be1096bf604ea4047117d31fe34aa",
+    "macos": "064efa0d65ffd0a7675728652da108bbaa170e97eb1cbb6e4b25820512ec0126",
+    "zip": "e3892d65d35d8328b7e8e4aa8d5f58c0bcb808ad53bb5421751c57cb5c2e63fa"
+  }
+}
