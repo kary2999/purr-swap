@@ -12,8 +12,11 @@ class ExchangeRecord {
   final double usdtAmount;
   final double? jpyAmount;        // 中转日元(USDT→JPY 段的产出)
   final double cnyReceived;
-  final double referenceRate;     // USDT→CNY 或 USDT→JPY (直接/中转段 1)
-  final double? jpyCnyReference;  // JPY→CNY Wise (仅两段路径)
+  final double referenceRate;     // USDT→CNY 或 USDT→JPY (直接/中转段 1) Wise mid
+  final double? jpyCnyReference;  // JPY→CNY Wise mid (仅两段路径)
+  // leg0: 在国内买 U 的 CNY/USDT 价。用户真实成本基准,用于算 CNY → CNY 全链路损耗。
+  // 旧记录此字段为 null,history 显示时回退到 RateCache 当前 mid。
+  final double? cnyToUsdtRate;
   final String recipient;         // 本人 / 配偶 / 父 / 母 / 其他
   final String note;
 
@@ -26,6 +29,7 @@ class ExchangeRecord {
     required this.cnyReceived,
     required this.referenceRate,
     this.jpyCnyReference,
+    this.cnyToUsdtRate,
     this.recipient = '本人',
     this.note = '',
   });
@@ -76,6 +80,33 @@ class ExchangeRecord {
     return (leg2EffectiveRate! - jpyCnyReference!) / jpyCnyReference! * 100;
   }
 
+  // ============ CNY → CNY 全链路损耗（用户真实关心的）============
+  // pctVsReference 是 vs Wise mid (两段 mid 乘积) 的差,
+  // 但用户的真实成本不是 mid,是在国内**实际**买 U 的价 (如 6.81)。
+  // 所以下面这套以 cnyToUsdtRate(或 fallback) 为基准算 CNY 进 → CNY 出 损耗。
+
+  /// 投入 CNY = usdt × (cnyToUsdtRate ?? fallback)
+  /// fallback 为 null 且 record 也没存 rate 时返回 null
+  double? cnyInputWith(double? fallback) {
+    final rate = cnyToUsdtRate ?? fallback;
+    if (rate == null || rate <= 0) return null;
+    return usdtAmount * rate;
+  }
+
+  /// CNY 全链路成本 (input - 到手, 正值=亏)
+  double? cnyCostWith(double? fallback) {
+    final input = cnyInputWith(fallback);
+    if (input == null) return null;
+    return input - cnyReceived;
+  }
+
+  /// CNY 全链路损耗% (正值=亏, 与 pctVsReference 符号相反 —— pct 正值是溢价)
+  double? cnyLossPctWith(double? fallback) {
+    final input = cnyInputWith(fallback);
+    if (input == null || input == 0) return null;
+    return (input - cnyReceived) / input * 100;
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'at': at.toIso8601String(),
@@ -85,6 +116,7 @@ class ExchangeRecord {
         'cnyReceived': cnyReceived,
         'referenceRate': referenceRate,
         'jpyCnyReference': jpyCnyReference,
+        'cnyToUsdtRate': cnyToUsdtRate,
         'recipient': recipient,
         'note': note,
       };
@@ -98,6 +130,7 @@ class ExchangeRecord {
         cnyReceived: (j['cnyReceived'] as num).toDouble(),
         referenceRate: (j['referenceRate'] as num).toDouble(),
         jpyCnyReference: (j['jpyCnyReference'] as num?)?.toDouble(),
+        cnyToUsdtRate: (j['cnyToUsdtRate'] as num?)?.toDouble(),
         recipient: (j['recipient'] as String?) ?? '本人',
         note: (j['note'] as String?) ?? '',
       );

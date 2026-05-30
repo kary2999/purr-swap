@@ -2,7 +2,7 @@
 
 > USDT 多渠道比价 + 记账 + 风险提示。让换汇从「凭感觉」变成「看数据」。
 
-基于 **Flutter 3.19+** 跨平台构建，已发布 Android / macOS / Web 三端。当前版本 **v0.2.8**。
+基于 **Flutter 3.19+** 跨平台构建，已发布 Android / macOS / Web 三端。当前版本 **v0.2.9**。
 
 ---
 
@@ -12,9 +12,9 @@
 
 | 平台 | 文件 | 要求 |
 |---|---|---|
-| 📱 Android | `PurrSwap-v0.2.8-Android.apk` | Android 7.0+ |
-| 🖥 macOS | `PurrSwap-v0.2.8-macOS.dmg` | macOS 10.14+（M1–M4 / Intel 通用） |
-| 🌐 Web/源码 | `PurrSwap-v0.2.8-release.zip` | 任意浏览器，解压后启 web server |
+| 📱 Android | `PurrSwap-v0.2.9-Android.apk` | Android 7.0+ |
+| 🖥 macOS | `PurrSwap-v0.2.9-macOS.dmg` | macOS 10.14+（M1–M4 / Intel 通用） |
+| 🌐 Web/源码 | `PurrSwap-v0.2.9-release.zip` | 任意浏览器，解压后启 web server |
 
 每个产物配 `.sha256` 校验文件，介意完整性可用 `shasum -a 256 -c <file>.sha256` 比对。
 

@@ -20,6 +20,8 @@ class _RecordPageState extends State<RecordPage> {
   final _usdtCtl = TextEditingController(text: '1000');
   final _jpyCtl = TextEditingController(text: '158700');
   final _cnyCtl = TextEditingController(text: '6720');
+  // CNY/USDT 买入价（leg0 - 在国内买 U 的成本）。空白 = 用 RateCache 当前 mid
+  final _cnyRateCtl = TextEditingController();
   final _noteCtl = TextEditingController();
   bool _saving = false;
 
@@ -56,6 +58,9 @@ class _RecordPageState extends State<RecordPage> {
       }
     }
 
+    // leg0 CNY/USDT 买入价 - 空白表示用当时市场 mid (fallback)
+    final cnyRate = double.tryParse(_cnyRateCtl.text.trim());
+
     setState(() => _saving = true);
     final r = ExchangeRecord(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -66,6 +71,7 @@ class _RecordPageState extends State<RecordPage> {
       cnyReceived: cny,
       referenceRate: ref1,
       jpyCnyReference: ref2,
+      cnyToUsdtRate: (cnyRate != null && cnyRate > 0) ? cnyRate : null,
       recipient: _recipient,
       note: _noteCtl.text.trim(),
     );
@@ -78,6 +84,7 @@ class _RecordPageState extends State<RecordPage> {
       return;
     }
     _usdtCtl.text = '1000';
+    _cnyRateCtl.clear();
     _jpyCtl.text = '158700';
     _cnyCtl.text = '6720';
     _noteCtl.clear();
@@ -182,6 +189,7 @@ class _RecordPageState extends State<RecordPage> {
               leading: [
                 IOSNavLink('清空', onTap: () {
                   _usdtCtl.text = '1000';
+    _cnyRateCtl.clear();
                   _jpyCtl.text = '158700';
                   _cnyCtl.text = '6720';
                   _noteCtl.clear();
@@ -226,6 +234,7 @@ class _RecordPageState extends State<RecordPage> {
               header: '金额',
               children: [
                 _amountRow('USDT 投入', _usdtCtl, ' '),
+                _amountRow('CNY/USDT 买入价 (leg0, 选填)', _cnyRateCtl, ''),
                 if (twoHop) _amountRow('中转 JPY', _jpyCtl, ''),
                 _amountRow('实收 CNY', _cnyCtl, '¥'),
               ],

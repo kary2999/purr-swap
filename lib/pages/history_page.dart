@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/exchange_record.dart';
+import '../services/rate_cache.dart';
 import '../storage/local_store.dart';
 import '../theme/ios_theme.dart';
 import '../widgets/ios_widgets.dart';
@@ -57,12 +58,28 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
+  /// 算 CNY 全链路损耗需要的 fallback CNY/USDT 价 — 当 record 没存 cnyToUsdtRate 时用。
+  /// 优先级: Binance 蓝钻 > Wise USD/CNY > 7.20 兜底
+  double _fallbackCnyRate() {
+    final qs = RateCache.instance.snapshot;
+    for (final q in qs) {
+      if (q.source == 'Binance-蓝钻' && q.pair == 'USDT/CNY') return q.mid;
+    }
+    for (final q in qs) {
+      if (q.source == 'Wise' && q.pair == 'USD/CNY') return q.mid;
+    }
+    return 7.20;
+  }
+
   @override
   Widget build(BuildContext c) {
     final shown = _filter == '全部'
         ? _records
         : _records.where((r) => r.channel == _filter).toList();
-    final totalCost = shown.fold<double>(0, (s, r) => s + r.costVsReference);
+    final fb = _fallbackCnyRate();
+    // CNY 全链路: cost 正值 = 亏 (与 costVsReference 同符号)
+    final totalCost =
+        shown.fold<double>(0, (s, r) => s + (r.cnyCostWith(fb) ?? 0));
     final totalUsdt = shown.fold<double>(0, (s, r) => s + r.usdtAmount);
     final totalCny = shown.fold<double>(0, (s, r) => s + r.cnyReceived);
 
@@ -140,7 +157,10 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Widget _historyRow(ExchangeRecord r) {
-    final cost = r.costVsReference;
+    final fb = _fallbackCnyRate();
+    // CNY 全链路损耗 — input(USDT × cnyRate) − cnyReceived
+    final cost = r.cnyCostWith(fb) ?? 0;
+    final pct = r.cnyLossPctWith(fb) ?? 0;
     final isLoss = cost >= 0;
     return Dismissible(
       key: ValueKey(r.id),
@@ -238,7 +258,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${r.pctVsReference >= 0 ? "+" : "−"}${r.pctVsReference.abs().toStringAsFixed(2)}%',
+                    '${isLoss ? "−" : "+"}${pct.abs().toStringAsFixed(2)}%',
                     style: IOS.monoSize(11, color: IOS.gray),
                   ),
                 ],
@@ -453,6 +473,7 @@ class _EditDialogState extends State<_EditDialog> {
                 cnyReceived: cny,
                 referenceRate: widget.record.referenceRate,
                 jpyCnyReference: widget.record.jpyCnyReference,
+                cnyToUsdtRate: widget.record.cnyToUsdtRate, // 保留旧字段不丢
                 recipient: _recipient,
                 note: _note.text.trim(),
               ),
