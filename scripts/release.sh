@@ -227,6 +227,7 @@ open -n -a "$BROWSER_APP" --args \
   --user-data-dir="$PROFILE" \
   --window-size=420,850 \
   --window-position=100,60 \
+  --disable-extensions --disable-component-extensions-with-background-pages \
   --no-first-run --no-default-browser-check
 
 sleep 1

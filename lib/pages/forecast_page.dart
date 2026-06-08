@@ -239,20 +239,18 @@ class _ForecastPageState extends State<ForecastPage> {
                 ? '★ 最优'
                 : '${(rows[i].pctVsBest ?? 0) >= 0 ? "+" : "−"}${(rows[i].pctVsBest ?? 0).abs().toStringAsFixed(2)}%',
             isBest: i == 0,
+            estimated: !rows[i].isMeasured,
           ),
       ],
     );
   }
 
+  // §4: 每行最多 2 段最关键描述。tagline 已是费率摘要;无 tagline 时退回数据来源。
+  // "实测/估算" 不再混在文字流, 改由 ForecastRankRow 的小 tag 展示。
   String _channelMeta(ForecastRow r) {
-    final src = _dataSource(r);
-    final flag = r.isMeasured ? '✓实测' : '⚠估算';
     final tag = r.channel.tagline;
-    final loss = r.cnyLossPct != null
-        ? ' · CNY 全链路损耗 ${r.cnyLossPct!.toStringAsFixed(2)}%'
-        : '';
-    if (tag.isNotEmpty) return '$tag · $src · $flag$loss';
-    return '$src · $flag$loss';
+    if (tag.isNotEmpty) return tag;
+    return _dataSource(r);
   }
 
   /// 数据来源说明 —— 显式区分 "实测" vs "估算"，方便用户判断数字可信度

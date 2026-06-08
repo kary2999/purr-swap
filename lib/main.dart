@@ -105,10 +105,10 @@ class _IOSTabBar extends StatelessWidget {
       padding: const EdgeInsets.only(top: 6, bottom: 16),
       child: Row(
         children: [
-          _tab(0, Icons.auto_awesome, '预测'),
+          _tab(0, Icons.insights_outlined, '预测'),
           _tab(1, Icons.add_circle_outline, '记一笔'),
-          _tab(2, Icons.access_time, '历史'),
-          _tab(3, Icons.bar_chart, '统计'),
+          _tab(2, Icons.history_outlined, '历史'),
+          _tab(3, Icons.insert_chart_outlined, '统计'),
           _tab(4, Icons.menu_book_outlined, '指南'),
           _tab(5, Icons.settings_outlined, '设置'),
         ],
@@ -127,12 +127,12 @@ class _IOSTabBar extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 22, color: active ? IOS.blue : IOS.gray),
-              const SizedBox(height: 2),
+              Icon(icon, size: 24, color: active ? IOS.blue : IOS.gray3),
+              const SizedBox(height: 3),
               Text(lb,
                   style: TextStyle(
-                    fontSize: 10,
-                    color: active ? IOS.blue : IOS.gray,
+                    fontSize: 11,
+                    color: active ? IOS.blue : IOS.gray3,
                     fontWeight: active ? FontWeight.w600 : FontWeight.w500,
                   )),
             ],

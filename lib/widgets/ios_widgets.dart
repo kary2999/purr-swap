@@ -103,9 +103,9 @@ class IOSLargeTitle extends StatelessWidget {
             child: Text(
               title,
               style: const TextStyle(
-                fontSize: 34,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -1,
+                fontSize: 32,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.5,
                 color: IOS.textPrimary,
               ),
             ),
@@ -612,6 +612,23 @@ class IOSBadge extends StatelessWidget {
   }
 }
 
+/// 小标签胶囊 (浅底圆角, 用于 "估算" 等次要标记)
+class _SoftTag extends StatelessWidget {
+  final String text;
+  const _SoftTag(this.text);
+  @override
+  Widget build(BuildContext c) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+        decoration: BoxDecoration(
+          color: IOS.orange.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(IOS.radTag),
+        ),
+        child: Text(text,
+            style: const TextStyle(
+                fontSize: 10, fontWeight: FontWeight.w600, color: IOS.orange)),
+      );
+}
+
 /// === 渠道排名行 (预测页用) ===
 class ForecastRankRow extends StatelessWidget {
   final int rank;
@@ -622,6 +639,7 @@ class ForecastRankRow extends StatelessWidget {
   final String cny;
   final String pct;
   final bool isBest;
+  final bool estimated;
   final VoidCallback? onTap;
   const ForecastRankRow({
     super.key,
@@ -633,6 +651,7 @@ class ForecastRankRow extends StatelessWidget {
     required this.cny,
     required this.pct,
     this.isBest = false,
+    this.estimated = false,
     this.onTap,
   });
 
@@ -694,11 +713,15 @@ class ForecastRankRow extends StatelessWidget {
                               color: IOS.textPrimary,
                               fontWeight: FontWeight.w500)),
                       IOSBadge(risk: risk, text: riskLabel),
+                      if (estimated) const _SoftTag('估算'),
                     ],
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(meta,
-                      style: IOS.monoSize(11, color: IOS.gray)),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: IOS.monoSize(10, color: IOS.textTertiary)
+                          .copyWith(height: 1.5)),
                 ],
               ),
             ),
