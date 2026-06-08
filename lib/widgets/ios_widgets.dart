@@ -5,6 +5,64 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/ios_theme.dart';
 
+/// === 通用按压反馈包装 ===
+/// 给裸 GestureDetector 的元素加上 iOS/MD 标准的按压反馈:
+/// opacity 淡出 + 可选轻微 scale + 可选触感, 120ms 落在 HIG/MD 的 150-300ms 区间内。
+/// onTap 为 null 时视为禁用 (不响应、不反馈)。
+class Pressable extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+  final double pressedOpacity;
+  final double pressedScale;
+  final bool haptic;
+  final HitTestBehavior behavior;
+  const Pressable({
+    super.key,
+    required this.child,
+    this.onTap,
+    this.pressedOpacity = 0.55,
+    this.pressedScale = 1.0,
+    this.haptic = false,
+    this.behavior = HitTestBehavior.opaque,
+  });
+  @override
+  State<Pressable> createState() => _PressableState();
+}
+
+class _PressableState extends State<Pressable> {
+  bool _down = false;
+  void _set(bool v) {
+    if (mounted && _down != v) setState(() => _down = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onTap != null;
+    return GestureDetector(
+      behavior: widget.behavior,
+      onTap: enabled
+          ? () {
+              if (widget.haptic) HapticFeedback.selectionClick();
+              widget.onTap!();
+            }
+          : null,
+      onTapDown: enabled ? (_) => _set(true) : null,
+      onTapUp: enabled ? (_) => _set(false) : null,
+      onTapCancel: enabled ? () => _set(false) : null,
+      child: AnimatedScale(
+        scale: _down ? widget.pressedScale : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: AnimatedOpacity(
+          opacity: _down ? widget.pressedOpacity : 1.0,
+          duration: const Duration(milliseconds: 120),
+          child: widget.child,
+        ),
+      ),
+    );
+  }
+}
+
 /// === 大型标题导航栏 ===
 /// 上方一行操作按钮(可空),下方 34pt 大标题
 class IOSLargeTitle extends StatelessWidget {
@@ -64,15 +122,17 @@ class IOSNavLink extends StatelessWidget {
   final bool bold;
   const IOSNavLink(this.label, {super.key, this.onTap, this.bold = false});
   @override
-  Widget build(BuildContext c) => GestureDetector(
+  Widget build(BuildContext c) => Pressable(
         onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Text(
-          label,
-          style: TextStyle(
-            color: IOS.blue,
-            fontSize: 16,
-            fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: IOS.blue,
+              fontSize: 16,
+              fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
+            ),
           ),
         ),
       );
@@ -83,11 +143,12 @@ class IOSNavIcon extends StatelessWidget {
   final VoidCallback? onTap;
   const IOSNavIcon(this.icon, {super.key, this.onTap});
   @override
-  Widget build(BuildContext c) => GestureDetector(
+  Widget build(BuildContext c) => Pressable(
         onTap: onTap,
-        behavior: HitTestBehavior.opaque,
+        pressedOpacity: 0.4,
+        // 扩大触控区 (22pt 图标 + padding ≈ 38pt), 贴近 44pt 标准而不撑破 32pt 标题栏
         child: Padding(
-          padding: const EdgeInsets.all(2),
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
           child: Icon(icon, color: IOS.blue, size: 22),
         ),
       );
@@ -103,11 +164,12 @@ class IOSTickerBar extends StatelessWidget {
   Widget build(BuildContext c) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: IOS.separator, width: 0.5),
+        boxShadow: IOS.softShadow,
       ),
       child: Row(
         children: [
@@ -229,14 +291,13 @@ class HeroInputCard extends StatelessWidget {
           clipBehavior: Clip.hardEdge,
           children: [
             Positioned(
-              right: -50,
-              top: -50,
-              child: Container(
-                width: 160,
-                height: 160,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.08),
+              right: 8,
+              bottom: -10,
+              child: Text(
+                '🐾',
+                style: TextStyle(
+                  fontSize: 72,
+                  color: Colors.white.withValues(alpha: 0.16),
                 ),
               ),
             ),
@@ -272,11 +333,15 @@ class HeroInputCard extends StatelessWidget {
                   spacing: 6,
                   children: presets.map((v) {
                     final active = v == activePreset;
-                    return GestureDetector(
+                    return Pressable(
                       onTap: () => onPresetTap?.call(v),
-                      child: Container(
+                      haptic: true,
+                      pressedOpacity: 0.6,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOut,
                         padding:
-                            const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                            const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                         decoration: BoxDecoration(
                           color: active
                               ? Colors.white
@@ -345,6 +410,7 @@ class IOSSection extends StatelessWidget {
               color: Colors.white,
               borderRadius: BorderRadius.circular(IOS.radCard),
               border: Border.all(color: IOS.separator, width: 0.5),
+              boxShadow: IOS.softShadow,
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(IOS.radCard),
@@ -580,24 +646,24 @@ class ForecastRankRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              width: 26,
-              height: 26,
+              width: 28,
+              height: 28,
               decoration: BoxDecoration(
                 gradient: isBest
                     ? const LinearGradient(
-                        colors: [IOS.yellow, IOS.orange],
+                        colors: [IOS.coral, IOS.coral2],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       )
                     : null,
-                color: isBest ? null : const Color(0x29787880),
+                color: isBest ? null : IOS.peach,
                 shape: BoxShape.circle,
                 boxShadow: isBest
                     ? [
                         BoxShadow(
-                          color: IOS.orange.withValues(alpha: 0.4),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
+                          color: IOS.coral.withValues(alpha: 0.4),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
                         )
                       ]
                     : null,
@@ -607,8 +673,8 @@ class ForecastRankRow extends StatelessWidget {
                 rank.toString().padLeft(2, '0'),
                 style: IOS.monoSize(
                   12,
-                  weight: FontWeight.w700,
-                  color: isBest ? Colors.white : IOS.gray,
+                  weight: FontWeight.w800,
+                  color: isBest ? Colors.white : IOS.coral,
                 ),
               ),
             ),
@@ -835,6 +901,7 @@ class IOSStepCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(IOS.radCard),
         border: Border.all(color: IOS.separator, width: 0.5),
+        boxShadow: IOS.softShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -907,6 +974,7 @@ class IOSKpiCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(IOS.radCard),
         border: Border.all(color: IOS.separator, width: 0.5),
+        boxShadow: IOS.softShadow,
       ),
       child: Stack(
         children: [
@@ -977,6 +1045,7 @@ class IOSBarChart extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(IOS.radCard),
         border: Border.all(color: IOS.separator, width: 0.5),
+        boxShadow: IOS.softShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1036,7 +1105,7 @@ class IOSBarChart extends StatelessWidget {
             child: Container(
               height: 16,
               decoration: BoxDecoration(
-                color: const Color(0x1A787880),
+                color: IOS.peach,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: FractionallySizedBox(
@@ -1091,22 +1160,42 @@ class IOSButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext c) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: danger ? IOS.red : IOS.blue,
-          borderRadius: BorderRadius.circular(IOS.radCard),
+    final enabled = onPressed != null;
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.4, // disabled 态: 降透明度 + 不响应
+      child: Pressable(
+        onTap: onPressed,
+        haptic: true,
+        pressedOpacity: 0.85,
+        pressedScale: 0.98, // 主按钮轻微回弹, 增强"按下"实感
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: danger
+                  ? const [IOS.red, Color(0xFFD63A34)]
+                  : const [IOS.coral, IOS.coral2],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(IOS.radCard),
+            boxShadow: [
+              BoxShadow(
+                color: (danger ? IOS.red : IOS.coral).withValues(alpha: 0.32),
+                blurRadius: 22,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: Text(text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              )),
         ),
-        alignment: Alignment.center,
-        child: Text(text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-            )),
       ),
     );
   }
@@ -1130,16 +1219,20 @@ class IOSSegmentedControl extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: const Color(0x1A787880),
+        color: const Color(0xFFF1E7D9),
         borderRadius: BorderRadius.circular(9),
       ),
       child: Row(
         children: List.generate(items.length, (i) {
           final isActive = i == active;
           return Expanded(
-            child: GestureDetector(
+            child: Pressable(
               onTap: () => onChange(i),
-              child: Container(
+              haptic: true,
+              pressedOpacity: 0.6,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 decoration: BoxDecoration(
                   color: isActive ? Colors.white : Colors.transparent,
@@ -1155,13 +1248,14 @@ class IOSSegmentedControl extends StatelessWidget {
                       : null,
                 ),
                 alignment: Alignment.center,
-                child: Text(
-                  items[i],
+                child: AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 200),
                   style: TextStyle(
                     color: IOS.textPrimary,
                     fontSize: 13,
                     fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
                   ),
+                  child: Text(items[i]),
                 ),
               ),
             ),
@@ -1205,7 +1299,7 @@ class IOSQuotaBar extends StatelessWidget {
           Container(
             height: 6,
             decoration: BoxDecoration(
-              color: const Color(0x1F787880),
+              color: IOS.peach,
               borderRadius: BorderRadius.circular(3),
             ),
             child: FractionallySizedBox(

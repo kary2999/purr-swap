@@ -30,7 +30,7 @@ BASE_HREF=${BASE_HREF:-/purr-swap/}
 step "Flutter build web (base-href=$BASE_HREF, 本地 canvaskit)"
 # --no-web-resources-cdn: canvaskit.wasm 本地化 — Pages 上 gstatic 跨域虽然 CORS ok,
 # 但本地化更稳, 离线也能跑
-flutter build web --release --pwa-strategy=none --base-href="$BASE_HREF" \
+flutter build web --release --pwa-strategy=offline-first --base-href="$BASE_HREF" \
   --no-web-resources-cdn 2>&1 | tail -2
 
 # 修 index.html 标题
@@ -60,9 +60,39 @@ sed -i '' "/<meta charset/a\\
 sed -i '' "s|flutter_bootstrap\\.js\"|flutter_bootstrap.js?v=$CUR_VER\"|g" \
   build/web/index.html
 
-# flutter_bootstrap.js: 内部 "main.dart.js" 字面量加 ?v=$VER
-sed -i '' "s|\"main\\.dart\\.js\"|\"main.dart.js?v=$CUR_VER\"|g" \
-  build/web/flutter_bootstrap.js
+# === 自定义 Service Worker(恢复 PWA 可安装)===
+# Flutter 3.41+ 内置 SW 已弃用为"自注销 stub"(无 fetch handler / 激活即 unregister),
+# 导致 Chrome 不再判定为可安装 PWA。这里用自定义 SW 覆盖它:
+#   · 带 fetch handler  → 满足 Chrome 可安装硬条件
+#   · 网络优先          → 在线时始终拿最新版, 不会"看不到更新"
+#   · 缓存兜底          → 离线时回退缓存, 仍可打开
+# bootstrap 仍按 flutter_service_worker.js?v=<hash> 注册它, 浏览器按 query 取到此文件。
+step "写入自定义 service worker (恢复 PWA 安装能力)"
+cat > build/web/flutter_service_worker.js <<'SW_EOF'
+'use strict';
+// Purr Swap 自定义 SW — 网络优先 + 缓存兜底, 带 fetch handler 以满足 PWA 可安装条件。
+const CACHE = 'purr-swap-runtime-v1';
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  event.respondWith((async () => {
+    try {
+      const fresh = await fetch(req);
+      if (fresh && fresh.status === 200 && req.url.startsWith(self.location.origin)) {
+        const cache = await caches.open(CACHE);
+        cache.put(req, fresh.clone());
+      }
+      return fresh;
+    } catch (err) {
+      const cached = await caches.match(req);
+      if (cached) return cached;
+      throw err;
+    }
+  })());
+});
+SW_EOF
 
 # 给 build/web 加个 .nojekyll，让 GitHub Pages 不要 Jekyll 处理（保留 _flutter 等下划线开头目录）
 touch build/web/.nojekyll

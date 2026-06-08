@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh"><head><meta charset="UTF-8"><style>
+:root{
+  --bg:#FFFFFF;--app:#FBFBFC;--surface:#FFFFFF;--line:#ECECEF;--line2:#F4F4F6;
+  --text:#0A0A0B;--text2:#6B6B73;--text3:#A0A0A8;
+  --ink:#111114;--up:#0FA968;--down:#E5484D;--accent:#111114;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased;}
+body{font-family:-apple-system,"SF Pro Text","PingFang SC",sans-serif;background:#d5dbe5;padding:36px;width:max-content;}
+.mono{font-family:"SF Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;}
+.title{font-size:20px;font-weight:700;color:#1d2430;margin-bottom:4px;}
+.subtitle{font-size:13px;color:#5c6680;margin-bottom:22px;}
+.grid{display:flex;gap:22px;align-items:flex-start;}
+.label{font-size:12px;color:#5c6680;margin-bottom:8px;font-weight:600;}
+.phone{width:390px;background:#fff;border-radius:42px;padding:12px;
+  box-shadow:0 30px 60px rgba(20,30,50,.18),0 0 0 11px #fff,0 0 0 12px #e4e4e8;}
+.scr{background:var(--app);border-radius:32px;overflow:hidden;height:812px;position:relative;color:var(--text);}
+.status{display:flex;justify-content:space-between;padding:14px 26px 6px;font-size:13px;font-weight:600;}
+.status .r{display:flex;gap:5px;align-items:center;color:var(--text3);font-size:11px;}
+.nav{padding:10px 22px 6px;display:flex;justify-content:space-between;align-items:flex-end;}
+.nav .big{font-size:32px;font-weight:800;letter-spacing:-1.2px;}
+.nav .acts{display:flex;gap:16px;color:var(--text);font-size:15px;font-weight:600;padding-bottom:6px;}
+.ticker{margin:8px 20px 18px;display:flex;gap:18px;align-items:center;}
+.ticker .pair{font-size:12px;}.ticker .pair b{font-weight:700;}
+.ticker .pair span{color:var(--text3);margin-right:4px;}
+.up{color:var(--up)!important}.dn{color:var(--down)!important}
+.hero{margin:0 20px 24px;}
+.hero .cap{font-size:11px;color:var(--text3);letter-spacing:1px;font-weight:700;text-transform:uppercase;}
+.hero .val{font-size:54px;font-weight:800;letter-spacing:-2px;margin-top:4px;line-height:1;}
+.hero .val small{font-size:18px;color:var(--text3);font-weight:600;margin-left:8px;}
+.chips{display:flex;gap:8px;margin-top:18px;}
+.chip{font-size:12px;padding:7px 15px;border-radius:9px;border:1px solid var(--line);color:var(--text2);font-weight:600;}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+.sec{font-size:11px;color:var(--text3);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin:8px 22px 10px;}
+.list{margin:0 20px;}
+.rk{display:flex;align-items:center;padding:15px 0;border-bottom:1px solid var(--line2);}
+.rk:last-child{border-bottom:none;}
+.rk .no{width:22px;font-size:13px;font-weight:700;color:var(--text3);}
+.rk.best .no{color:var(--ink);}
+.rk .nm{flex:1;}.rk .nm .t{font-size:15px;font-weight:600;display:flex;align-items:center;gap:7px;}
+.rk .nm .m{font-size:11px;color:var(--text3);margin-top:2px;}
+.rk .amt{text-align:right;}.rk .amt .c{font-size:18px;font-weight:700;}
+.rk.best .amt .c{font-size:19px;}
+.rk .amt .p{font-size:11px;margin-top:2px;color:var(--text3);}
+.dotg{width:6px;height:6px;border-radius:50%;}
+.tag{font-size:9px;font-weight:700;}
+.tag.lo{color:var(--up);}.tag.md{color:#C77700;}.tag.hi{color:var(--down);}
+.frow{display:flex;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line2);font-size:14px;}
+.card{margin:0 20px 18px;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;}
+.frow:last-child{border-bottom:none;}.frow .k{color:var(--text2);}.frow .v{font-weight:700;}
+.loss{margin:0 20px 18px;padding:18px 20px;border-left:3px solid var(--down);background:#FEF4F4;border-radius:0 12px 12px 0;}
+.loss .lab{font-size:11px;color:var(--text2);margin-bottom:5px;}
+.loss .big{font-size:26px;font-weight:800;color:var(--down);}
+.btn{margin:6px 20px 0;background:var(--ink);color:#fff;text-align:center;padding:16px;border-radius:14px;font-size:16px;font-weight:700;}
+.kpis{display:flex;gap:14px;margin:0 20px 22px;}
+.kpi{flex:1;}.kpi .h{font-size:10px;color:var(--text3);letter-spacing:.6px;font-weight:700;text-transform:uppercase;}
+.kpi .v{font-size:28px;font-weight:800;letter-spacing:-1px;margin-top:6px;}
+.barc{margin:0 20px 22px;}
+.barc .h{font-size:13px;font-weight:700;margin-bottom:16px;color:var(--text2);}
+.bar{display:flex;align-items:center;gap:12px;margin-bottom:13px;}
+.bar .bl{width:30px;font-size:12px;color:var(--text3);}
+.bar .track{flex:1;height:8px;background:#F0F0F2;border-radius:4px;overflow:hidden;}
+.bar .fill{height:100%;border-radius:4px;background:var(--ink);}
+.bar .bv{width:60px;text-align:right;font-size:12px;font-weight:700;}
+.tabbar{position:absolute;bottom:0;left:0;right:0;height:78px;background:rgba(255,255,255,.92);
+  backdrop-filter:blur(20px);border-top:1px solid var(--line);display:flex;padding-top:9px;}
+.tab{flex:1;text-align:center;color:var(--text3);font-size:10px;}
+.tab .ic{font-size:18px;display:block;margin-bottom:3px;filter:grayscale(1)opacity(.45);}
+.tab.on{color:var(--ink);font-weight:700;}.tab.on .ic{filter:none;}
+</style></head><body>
+<div class="title">Purr Swap · 换金所 — 极简白版（新视觉提案 B）</div>
+<div class="subtitle">大留白 · 超大数字 · 发丝级分隔线 · 单色墨黑主色 + 涨绿跌红 · 极致克制专业感</div>
+<div class="grid">
+
+  <!-- 预测 -->
+  <div><div class="label">⭐ 预测到账</div><div class="phone"><div class="scr">
+    <div class="status"><span>9:41</span><span class="r">●●● ⚡ 100%</span></div>
+    <div class="nav"><div class="big">预测到账</div><div class="acts">⟳</div></div>
+    <div class="ticker">
+      <div class="pair mono"><span>U/CNY</span><b>7.218</b></div>
+      <div class="pair mono"><span>JPY/CNY</span><b class="up">20.66</b></div>
+      <div class="pair mono"><span>U/JPY</span><b class="dn">149.3</b></div>
+    </div>
+    <div class="hero"><div class="cap">本金</div>
+      <div class="val mono">1,000<small>USDT</small></div>
+      <div class="chips"><div class="chip">500</div><div class="chip on">1K</div><div class="chip">5K</div><div class="chip">10K</div></div>
+    </div>
+    <div class="sec">到账排名</div>
+    <div class="list">
+      <div class="rk best"><div class="no mono">1</div><div class="nm"><div class="t">OKX 蓝钻 <span class="tag lo">● 低</span></div><div class="m mono">费率 0.1% · 7.205</div></div><div class="amt"><div class="c mono">¥7,030</div><div class="p mono up">+0.42%</div></div></div>
+      <div class="rk"><div class="no mono">2</div><div class="nm"><div class="t">Binance 大宗 <span class="tag lo">● 低</span></div><div class="m mono">费率 0.1% · 7.198</div></div><div class="amt"><div class="c mono">¥6,990</div><div class="p mono">−0.15%</div></div></div>
+      <div class="rk"><div class="no mono">3</div><div class="nm"><div class="t">熊猫速汇 <span class="tag md">● 中</span></div><div class="m mono">JPY 中转 · 含费</div></div><div class="amt"><div class="c mono">¥6,816</div><div class="p mono dn">−2.6%</div></div></div>
+      <div class="rk"><div class="no mono">4</div><div class="nm"><div class="t">JRF Wallet <span class="tag md">● 中</span></div><div class="m mono">JPY · ¥440 ATM</div></div><div class="amt"><div class="c mono">¥6,738</div><div class="p mono dn">−3.7%</div></div></div>
+      <div class="rk"><div class="no mono">5</div><div class="nm"><div class="t">Wise U卡 <span class="tag hi">● 高</span></div><div class="m mono">U卡 ATM</div></div><div class="amt"><div class="c mono">¥6,514</div><div class="p mono dn">−6.9%</div></div></div>
+    </div>
+    <div class="tabbar"><div class="tab on"><span class="ic">📈</span>预测</div><div class="tab"><span class="ic">＋</span>记账</div><div class="tab"><span class="ic">🕘</span>历史</div><div class="tab"><span class="ic">📊</span>统计</div><div class="tab"><span class="ic">📖</span>指南</div><div class="tab"><span class="ic">⚙</span>设置</div></div>
+  </div></div></div>
+
+  <!-- 记账 -->
+  <div><div class="label">＋ 记一笔</div><div class="phone"><div class="scr">
+    <div class="status"><span>9:41</span><span class="r">●●● ⚡ 100%</span></div>
+    <div class="nav"><div class="big">新记录</div><div class="acts">保存</div></div>
+    <div class="sec">渠道</div>
+    <div class="card"><div class="frow"><span class="k">渠道</span><span class="v">熊猫速汇（三段）</span></div>
+      <div class="frow"><span class="k">收款人</span><span class="v">本人</span></div>
+      <div class="frow"><span class="k">日期时间</span><span class="v mono">04/22 14:30</span></div></div>
+    <div class="sec">金额 · 三段式</div>
+    <div class="card"><div class="frow"><span class="k">USDT 投入</span><span class="v mono">1,000.00</span></div>
+      <div class="frow"><span class="k">中转 JPY</span><span class="v mono">150,780</span></div>
+      <div class="frow"><span class="k">实收 CNY</span><span class="v mono">¥6,728.40</span></div></div>
+    <div class="loss"><div class="lab">全链路汇损（对比 Wise 中间价）</div><div class="big mono">−¥187.34 <span style="font-size:14px;">(−1.57%)</span></div></div>
+    <div class="sec">额度 · 本月</div>
+    <div class="card"><div style="padding:16px 20px;"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:8px;"><span>月度 300万 JPY</span><span class="mono">150,780 / 3,000,000</span></div><div style="height:8px;background:#F0F0F2;border-radius:4px;overflow:hidden;"><div style="width:30%;height:100%;background:var(--up);border-radius:4px;"></div></div></div></div>
+    <div class="btn">保存记录</div>
+    <div class="tabbar"><div class="tab"><span class="ic">📈</span>预测</div><div class="tab on"><span class="ic">＋</span>记账</div><div class="tab"><span class="ic">🕘</span>历史</div><div class="tab"><span class="ic">📊</span>统计</div><div class="tab"><span class="ic">📖</span>指南</div><div class="tab"><span class="ic">⚙</span>设置</div></div>
+  </div></div></div>
+
+  <!-- 统计 -->
+  <div><div class="label">📊 统计</div><div class="phone"><div class="scr">
+    <div class="status"><span>9:41</span><span class="r">●●● ⚡ 100%</span></div>
+    <div class="nav"><div class="big">统计</div><div class="acts">2026 ▾</div></div>
+    <div class="kpis"><div class="kpi"><div class="h">本年出金</div><div class="v mono">¥625,675</div></div><div class="kpi"><div class="h">累计汇损</div><div class="v mono dn">−¥30,204</div></div></div>
+    <div class="sec">月度出金</div>
+    <div class="barc"><div class="h">每月 CNY 到账</div>
+      <div class="bar"><span class="bl mono">1月</span><div class="track"><div class="fill" style="width:72%"></div></div><span class="bv mono">¥152K</span></div>
+      <div class="bar"><span class="bl mono">2月</span><div class="track"><div class="fill" style="width:58%"></div></div><span class="bv mono">¥121K</span></div>
+      <div class="bar"><span class="bl mono">3月</span><div class="track"><div class="fill" style="width:90%"></div></div><span class="bv mono">¥189K</span></div>
+      <div class="bar"><span class="bl mono">4月</span><div class="track"><div class="fill" style="width:78%"></div></div><span class="bv mono">¥163K</span></div></div>
+    <div class="sec">各渠道平均汇损 %</div>
+    <div class="barc"><div class="h">越低越好</div>
+      <div class="bar"><span class="bl mono">OKX</span><div class="track"><div class="fill up" style="width:18%;background:var(--up)"></div></div><span class="bv mono up">−0.4%</span></div>
+      <div class="bar"><span class="bl mono">币安</span><div class="track"><div class="fill" style="width:26%;background:var(--up)"></div></div><span class="bv mono up">−0.9%</span></div>
+      <div class="bar"><span class="bl mono">熊猫</span><div class="track"><div class="fill" style="width:62%;background:#E0A100"></div></div><span class="bv mono" style="color:#C77700">−2.6%</span></div>
+      <div class="bar"><span class="bl mono">JRF</span><div class="track"><div class="fill" style="width:74%;background:var(--down)"></div></div><span class="bv mono dn">−3.7%</span></div>
+      <div class="bar"><span class="bl mono">Wise</span><div class="track"><div class="fill" style="width:100%;background:var(--down)"></div></div><span class="bv mono dn">−6.9%</span></div></div>
+    <div class="tabbar"><div class="tab"><span class="ic">📈</span>预测</div><div class="tab"><span class="ic">＋</span>记账</div><div class="tab"><span class="ic">🕘</span>历史</div><div class="tab on"><span class="ic">📊</span>统计</div><div class="tab"><span class="ic">📖</span>指南</div><div class="tab"><span class="ic">⚙</span>设置</div></div>
+  </div></div></div>
+
+</div></body></html>

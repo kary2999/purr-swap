@@ -25,6 +25,22 @@ class QuotaUsage {
 }
 
 class QuotaService {
+  // 默认每渠道额度 (JPY): 月 300万 / 年 600万。
+  static const double _defaultMonthLimit = 3000000;
+  static const double _defaultYearLimit = 6000000;
+
+  /// 个别渠道单独提额覆盖 (匹配 kChannels 里的渠道名)。
+  /// 熊猫速汇 2026 年度上限提额: 600万 → 800万 JPY (月度仍 300万)。
+  static const Map<String, double> _yearLimitOverride = {
+    '熊猫速汇(JPY)': 8000000,
+  };
+  static const Map<String, double> _monthLimitOverride = {};
+
+  static double yearLimitFor(String channel) =>
+      _yearLimitOverride[channel] ?? _defaultYearLimit;
+  static double monthLimitFor(String channel) =>
+      _monthLimitOverride[channel] ?? _defaultMonthLimit;
+
   /// 按渠道统计本月 / 本年 JPY 投入。
   static QuotaUsage forChannel(
       List<ExchangeRecord> records, String channel, DateTime now) {
@@ -38,7 +54,12 @@ class QuotaService {
         if (r.at.month == now.month) month += jpy;
       }
     }
-    return QuotaUsage(monthUsed: month, yearUsed: year);
+    return QuotaUsage(
+      monthUsed: month,
+      yearUsed: year,
+      monthLimit: monthLimitFor(channel),
+      yearLimit: yearLimitFor(channel),
+    );
   }
 
   /// 按收款人统计本年累计(折 USD) — 用于 5w USD/年 外汇管制追踪。

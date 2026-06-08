@@ -477,6 +477,7 @@ class _ForecastPageState extends State<ForecastPage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(IOS.radCard),
         border: Border.all(color: IOS.separator, width: 0.5),
+        boxShadow: IOS.softShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

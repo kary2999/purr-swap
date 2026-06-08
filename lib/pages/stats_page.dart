@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/exchange_record.dart';
+import '../services/quota.dart';
 import '../storage/local_store.dart';
 import '../theme/ios_theme.dart';
 import '../widgets/ios_widgets.dart';
@@ -49,6 +50,7 @@ class _StatsPageState extends State<StatsPage> {
             else ...[
               _ticker(),
               _kpiGrid(),
+              ..._quotaSection(),
               ..._monthlyOutflow(),
               ..._monthlyLoss(),
               ..._channelRanking(),
@@ -273,4 +275,164 @@ class _StatsPageState extends State<StatsPage> {
     if (v.abs() >= 10000) return '${(v / 1000).toStringAsFixed(0)}k';
     return v.toStringAsFixed(0);
   }
+
+  // ============ 额度追踪 + 预警 ============
+  Color _quotaColor(double pct) =>
+      pct >= 0.9 ? IOS.red : (pct >= 0.7 ? IOS.orange : IOS.green);
+
+  /// JPY 简写: 大额用"万",小额用千分位
+  String _jpyShort(double v) {
+    if (v >= 10000) {
+      final wan = v / 10000;
+      return '${wan.toStringAsFixed(wan >= 100 ? 0 : 1)}万';
+    }
+    return NumberFormat('#,##0').format(v);
+  }
+
+  List<Widget> _quotaSection() {
+    final now = DateTime.now();
+    final year = now.year;
+
+    // 受 JPY 额度管制的渠道(各自独立,不共享)
+    final controlled =
+        kChannels.where((c) => c.jpyQuotaControlled).map((c) => c.name).toList();
+    final usedChannels = controlled
+        .where((ch) => _records.any(
+            (r) => r.channel == ch && r.at.year == year && r.jpyAmount != null))
+        .toList();
+
+    // 5万 USD/年 外汇管制 — 按收款人折 USD(≈USDT)
+    final usdByRecip = QuotaService.yearlyUsdByRecipient(_records, now)
+        .entries
+        .where((e) => e.value > 0)
+        .toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    // 预警收集 (≥90%)
+    final warn = <String>[];
+    for (final e in usdByRecip) {
+      final p = e.value / 50000;
+      if (p >= 0.9) {
+        warn.add('${e.key} 年度购汇已达 ${(p * 100).toStringAsFixed(0)}% (5万USD)');
+      }
+    }
+    for (final ch in usedChannels) {
+      final q = QuotaService.forChannel(_records, ch, now);
+      if (q.yearPct >= 0.9) {
+        warn.add('${_shortChannel(ch)} 年度额度已达 ${(q.yearPct * 100).toStringAsFixed(0)}% (${_jpyShort(q.yearLimit)}JPY)');
+      }
+      if (q.monthPct >= 0.9) {
+        warn.add('${_shortChannel(ch)} 本月额度已达 ${(q.monthPct * 100).toStringAsFixed(0)}% (${_jpyShort(q.monthLimit)}JPY)');
+      }
+    }
+
+    final out = <Widget>[];
+    if (warn.isNotEmpty) out.add(_quotaWarning(warn));
+
+    // ① 5万 USD/年
+    if (usdByRecip.isNotEmpty) {
+      out.add(IOSSection(
+        header: '外汇管制 · 个人年度购汇 5万 USD',
+        footer: '按收款人统计 $year 年累计 USDT(≈USD)。接近 5万 需留意境内个人购汇监管。',
+        children: [
+          for (final e in usdByRecip)
+            IOSQuotaBar(
+              pct: e.value / 50000,
+              leftText: e.key,
+              rightText:
+                  '\$${NumberFormat('#,##0').format(e.value)} / 50,000',
+              color: _quotaColor(e.value / 50000),
+            ),
+        ],
+      ));
+    }
+
+    // ② 渠道年度 600万 JPY
+    if (usedChannels.isNotEmpty) {
+      out.add(IOSSection(
+        header: '渠道额度 · 年度上限',
+        footer: '日本各汇款渠道额度独立、互不共享。熊猫速汇年度已提额至 800万 JPY。',
+        children: [
+          for (final ch in usedChannels)
+            _channelQuotaBar(ch, now, isMonth: false),
+        ],
+      ));
+
+      // ③ 本月 300万 JPY
+      final monthUsed =
+          usedChannels.where((ch) => QuotaService.forChannel(_records, ch, now).monthUsed > 0).toList();
+      out.add(IOSSection(
+        header: '本月额度 · 300万 JPY/渠道',
+        footer: '按自然月重置${monthUsed.isEmpty ? ' · 本月(${now.month}月)各渠道暂未使用' : ''}。',
+        children: monthUsed.isEmpty
+            ? [
+                const IOSRow(
+                  leadingIcon: Icons.check_circle,
+                  iconColors: [IOS.green, Color(0xFF00A86B)],
+                  label: '本月暂无换汇',
+                  sub: '各渠道 300万 JPY 额度全额可用',
+                ),
+              ]
+            : [
+                for (final ch in monthUsed)
+                  _channelQuotaBar(ch, now, isMonth: true),
+              ],
+      ));
+    }
+
+    return out;
+  }
+
+  Widget _channelQuotaBar(String channel, DateTime now,
+      {required bool isMonth}) {
+    final q = QuotaService.forChannel(_records, channel, now);
+    final used = isMonth ? q.monthUsed : q.yearUsed;
+    final limit = isMonth ? q.monthLimit : q.yearLimit;
+    final pct = isMonth ? q.monthPct : q.yearPct;
+    return IOSQuotaBar(
+      pct: pct,
+      leftText: _shortChannel(channel),
+      rightText: '¥${_jpyShort(used)} / ${_jpyShort(limit)}',
+      color: _quotaColor(pct),
+    );
+  }
+
+  Widget _quotaWarning(List<String> msgs) => Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: IOS.red.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(IOS.radCard),
+          border: Border.all(color: IOS.red.withValues(alpha: 0.3), width: 0.5),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: IOS.red, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('额度预警',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFC91D14),
+                          fontSize: 13)),
+                  const SizedBox(height: 3),
+                  for (final m in msgs)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 1),
+                      child: Text('· $m',
+                          style: const TextStyle(
+                              color: Color(0xFFC91D14),
+                              fontSize: 12,
+                              height: 1.4)),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
 }

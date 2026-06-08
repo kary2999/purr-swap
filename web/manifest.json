@@ -1,11 +1,11 @@
 {
-    "name": "currency_exchange",
-    "short_name": "currency_exchange",
+    "name": "Purr Swap · 换金所",
+    "short_name": "Purr Swap",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FBF6EF",
+    "theme_color": "#FF6B45",
+    "description": "USDT 多渠道比价 / 三段式记账 / 风险提示",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

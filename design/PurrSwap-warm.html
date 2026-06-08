@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh"><head><meta charset="UTF-8"><style>
+:root{
+  --bg:#FBF6EF;--app:#FBF6EF;--surface:#FFFFFF;--line:#EFE6D8;--line2:#F4ECE0;
+  --text:#2B2018;--text2:#8A7B6B;--text3:#B7A795;
+  --coral:#FF6B45;--coral2:#FF8A63;--peach:#FFEDE4;
+  --up:#1FAE6B;--down:#F0504A;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased;}
+body{font-family:-apple-system,"SF Pro Text","PingFang SC",sans-serif;background:#d5dbe5;padding:36px;width:max-content;}
+.mono{font-family:"SF Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;}
+.title{font-size:20px;font-weight:700;color:#1d2430;margin-bottom:4px;}
+.subtitle{font-size:13px;color:#5c6680;margin-bottom:22px;}
+.grid{display:flex;gap:22px;align-items:flex-start;}
+.label{font-size:12px;color:#5c6680;margin-bottom:8px;font-weight:600;}
+.phone{width:390px;background:#fff;border-radius:42px;padding:12px;
+  box-shadow:0 30px 60px rgba(120,80,40,.20),0 0 0 11px #fff,0 0 0 12px #ead9c5;}
+.scr{background:var(--app);border-radius:32px;overflow:hidden;height:812px;position:relative;color:var(--text);}
+.status{display:flex;justify-content:space-between;padding:14px 26px 6px;font-size:13px;font-weight:600;}
+.status .r{display:flex;gap:5px;align-items:center;color:var(--text3);font-size:11px;}
+.nav{padding:8px 22px 6px;display:flex;justify-content:space-between;align-items:flex-end;}
+.nav .big{font-size:31px;font-weight:800;letter-spacing:-1px;display:flex;align-items:center;gap:8px;}
+.nav .big .cat{font-size:24px;}
+.nav .acts{display:flex;gap:16px;color:var(--coral);font-size:15px;font-weight:700;padding-bottom:6px;}
+.ticker{margin:6px 18px 16px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 14px;display:flex;align-items:center;gap:9px;box-shadow:0 4px 14px rgba(120,80,40,.05);}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--up);box-shadow:0 0 7px var(--up);}
+.ticker .pair{font-size:11px;}.ticker .pair b{font-weight:700;}.ticker .pair span{color:var(--text3);margin-right:3px;}
+.up{color:var(--up)!important}.dn{color:var(--down)!important}
+.hero{margin:2px 18px 18px;border-radius:24px;padding:20px 22px 18px;position:relative;overflow:hidden;
+  background:linear-gradient(135deg,var(--coral),var(--coral2));box-shadow:0 12px 28px rgba(255,107,69,.32);}
+.hero::after{content:"🐾";position:absolute;right:14px;bottom:6px;font-size:64px;opacity:.16;}
+.hero .cap{font-size:11px;color:rgba(255,255,255,.85);letter-spacing:.6px;}
+.hero .val{font-size:48px;font-weight:800;letter-spacing:-1.5px;color:#fff;margin-top:2px;}
+.hero .val small{font-size:18px;color:rgba(255,255,255,.75);font-weight:600;margin-left:6px;}
+.chips{display:flex;gap:8px;margin-top:14px;}
+.chip{font-size:12px;padding:7px 14px;border-radius:13px;background:rgba(255,255,255,.22);color:#fff;font-weight:700;}
+.chip.on{background:#fff;color:var(--coral);}
+.sec{font-size:11px;color:var(--text3);letter-spacing:.5px;font-weight:700;margin:6px 24px 9px;}
+.card{margin:0 18px 16px;background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 6px 16px rgba(120,80,40,.05);}
+.rk{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line2);}
+.rk:last-child{border-bottom:none;}
+.rk .no{width:28px;height:28px;border-radius:50%;background:var(--peach);color:var(--coral);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-right:11px;}
+.rk.best .no{background:linear-gradient(135deg,var(--coral),var(--coral2));color:#fff;box-shadow:0 4px 10px rgba(255,107,69,.4);}
+.rk .nm{flex:1;}.rk .nm .t{font-size:15px;font-weight:700;display:flex;align-items:center;gap:7px;}
+.rk .nm .m{font-size:11px;color:var(--text3);margin-top:2px;}
+.rk .amt{text-align:right;}.rk .amt .c{font-size:17px;font-weight:800;}
+.rk.best .amt .c{color:var(--coral);}.rk .amt .p{font-size:11px;margin-top:2px;color:var(--text3);}
+.tag{font-size:9px;font-weight:800;padding:2px 7px;border-radius:7px;}
+.tag.lo{background:rgba(31,174,107,.14);color:var(--up);}
+.tag.md{background:rgba(255,138,30,.16);color:#D97A00;}
+.tag.hi{background:rgba(240,80,74,.14);color:var(--down);}
+.frow{display:flex;justify-content:space-between;padding:15px 16px;border-bottom:1px solid var(--line2);font-size:14px;}
+.frow:last-child{border-bottom:none;}.frow .k{color:var(--text2);}.frow .v{font-weight:700;}
+.loss{margin:0 18px 16px;background:#fff;border:1px solid rgba(240,80,74,.25);border-radius:20px;padding:16px 18px;box-shadow:0 6px 16px rgba(120,80,40,.05);}
+.loss .lab{font-size:11px;color:var(--text2);margin-bottom:5px;}
+.loss .big{font-size:25px;font-weight:800;color:var(--down);}
+.btn{margin:6px 18px 0;background:linear-gradient(135deg,var(--coral),var(--coral2));color:#fff;text-align:center;padding:16px;border-radius:18px;font-size:16px;font-weight:800;box-shadow:0 10px 22px rgba(255,107,69,.32);}
+.kpis{display:flex;gap:12px;margin:0 18px 16px;}
+.kpi{flex:1;background:#fff;border:1px solid var(--line);border-radius:18px;padding:15px;box-shadow:0 6px 16px rgba(120,80,40,.05);}
+.kpi .h{font-size:10px;color:var(--text3);letter-spacing:.5px;font-weight:700;}
+.kpi .v{font-size:24px;font-weight:800;letter-spacing:-.8px;margin-top:5px;}
+.barc{margin:0 18px 16px;background:#fff;border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:0 6px 16px rgba(120,80,40,.05);}
+.barc .h{font-size:13px;font-weight:700;margin-bottom:14px;color:var(--text2);}
+.bar{display:flex;align-items:center;gap:11px;margin-bottom:12px;}
+.bar .bl{width:30px;font-size:12px;color:var(--text3);}
+.bar .track{flex:1;height:13px;background:var(--peach);border-radius:7px;overflow:hidden;}
+.bar .fill{height:100%;border-radius:7px;background:linear-gradient(90deg,var(--coral),var(--coral2));}
+.bar .bv{width:60px;text-align:right;font-size:12px;font-weight:800;}
+.tabbar{position:absolute;bottom:0;left:0;right:0;height:78px;background:rgba(251,246,239,.92);backdrop-filter:blur(20px);border-top:1px solid var(--line);display:flex;padding-top:9px;}
+.tab{flex:1;text-align:center;color:var(--text3);font-size:10px;}
+.tab .ic{font-size:18px;display:block;margin-bottom:3px;filter:grayscale(1)opacity(.5);}
+.tab.on{color:var(--coral);font-weight:700;}.tab.on .ic{filter:none;}
+</style></head><body>
+<div class="title">Purr Swap · 换金所 — 品牌暖色·猫咪版（新视觉提案 C）</div>
+<div class="subtitle">奶油底 + 珊瑚橙品牌主色（呼应猫咪 logo）· 圆润卡片 · 柔和阴影 · 友好但不幼稚</div>
+<div class="grid">
+
+  <!-- 预测 -->
+  <div><div class="label">⭐ 预测到账</div><div class="phone"><div class="scr">
+    <div class="status"><span>9:41</span><span class="r">●●● ⚡ 100%</span></div>
+    <div class="nav"><div class="big"><span class="cat">🐱</span>预测到账</div><div class="acts">⟳</div></div>
+    <div class="ticker"><div class="dot"></div>
+      <div class="pair mono"><span>U/CNY</span><b>7.218</b></div>
+      <div class="pair mono"><span>JPY/CNY</span><b class="up">20.66</b></div>
+      <div class="pair mono"><span>U/JPY</span><b class="dn">149.3</b></div></div>
+    <div class="hero"><div class="cap">本金 INPUT</div>
+      <div class="val mono">1,000<small>USDT</small></div>
+      <div class="chips"><div class="chip">500</div><div class="chip on">1K</div><div class="chip">5K</div><div class="chip">10K</div></div></div>
+    <div class="sec">到账排名 · 高→低</div>
+    <div class="card">
+      <div class="rk best"><div class="no">1</div><div class="nm"><div class="t">OKX 蓝钻 <span class="tag lo">低</span></div><div class="m mono">费率 0.1% · 7.205</div></div><div class="amt"><div class="c mono">¥7,030</div><div class="p mono up">+0.42%</div></div></div>
+      <div class="rk"><div class="no">2</div><div class="nm"><div class="t">Binance 大宗 <span class="tag lo">低</span></div><div class="m mono">费率 0.1% · 7.198</div></div><div class="amt"><div class="c mono">¥6,990</div><div class="p mono">−0.15%</div></div></div>
+      <div class="rk"><div class="no">3</div><div class="nm"><div class="t">熊猫速汇 <span class="tag md">中</span></div><div class="m mono">JPY 中转 · 含费</div></div><div class="amt"><div class="c mono">¥6,816</div><div class="p mono dn">−2.6%</div></div></div>
+      <div class="rk"><div class="no">4</div><div class="nm"><div class="t">JRF Wallet <span class="tag md">中</span></div><div class="m mono">JPY · ¥440 ATM</div></div><div class="amt"><div class="c mono">¥6,738</div><div class="p mono dn">−3.7%</div></div></div>
+      <div class="rk"><div class="no">5</div><div class="nm"><div class="t">Wise U卡 <span class="tag hi">高</span></div><div class="m mono">U卡 ATM</div></div><div class="amt"><div class="c mono">¥6,514</div><div class="p mono dn">−6.9%</div></div></div></div>
+    <div class="tabbar"><div class="tab on"><span class="ic">📈</span>预测</div><div class="tab"><span class="ic">＋</span>记账</div><div class="tab"><span class="ic">🕘</span>历史</div><div class="tab"><span class="ic">📊</span>统计</div><div class="tab"><span class="ic">📖</span>指南</div><div class="tab"><span class="ic">⚙</span>设置</div></div>
+  </div></div></div>
+
+  <!-- 记账 -->
+  <div><div class="label">＋ 记一笔</div><div class="phone"><div class="scr">
+    <div class="status"><span>9:41</span><span class="r">●●● ⚡ 100%</span></div>
+    <div class="nav"><div class="big">新记录</div><div class="acts">保存</div></div>
+    <div class="sec">渠道</div>
+    <div class="card"><div class="frow"><span class="k">渠道</span><span class="v" style="color:var(--coral)">熊猫速汇（三段）</span></div>
+      <div class="frow"><span class="k">收款人</span><span class="v">本人</span></div>
+      <div class="frow"><span class="k">日期时间</span><span class="v mono">04/22 14:30</span></div></div>
+    <div class="sec">金额 · 三段式</div>
+    <div class="card"><div class="frow"><span class="k">USDT 投入</span><span class="v mono" style="color:var(--coral)">1,000.00</span></div>
+      <div class="frow"><span class="k">中转 JPY</span><span class="v mono" style="color:var(--coral)">150,780</span></div>
+      <div class="frow"><span class="k">实收 CNY</span><span class="v mono" style="color:var(--coral)">¥6,728.40</span></div></div>
+    <div class="loss"><div class="lab">全链路汇损（对比 Wise 中间价）</div><div class="big mono">−¥187.34 <span style="font-size:14px;">(−1.57%)</span></div></div>
+    <div class="sec">额度追踪 · 本月</div>
+    <div class="card"><div style="padding:16px;"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:8px;"><span>月度 300万 JPY</span><span class="mono">150,780 / 3,000,000</span></div><div style="height:9px;background:var(--peach);border-radius:5px;overflow:hidden;"><div style="width:30%;height:100%;background:var(--up);border-radius:5px;"></div></div></div></div>
+    <div class="btn">保存记录</div>
+    <div class="tabbar"><div class="tab"><span class="ic">📈</span>预测</div><div class="tab on"><span class="ic">＋</span>记账</div><div class="tab"><span class="ic">🕘</span>历史</div><div class="tab"><span class="ic">📊</span>统计</div><div class="tab"><span class="ic">📖</span>指南</div><div class="tab"><span class="ic">⚙</span>设置</div></div>
+  </div></div></div>
+
+  <!-- 统计 -->
+  <div><div class="label">📊 统计</div><div class="phone"><div class="scr">
+    <div class="status"><span>9:41</span><span class="r">●●● ⚡ 100%</span></div>
+    <div class="nav"><div class="big">统计</div><div class="acts">2026 ▾</div></div>
+    <div class="kpis"><div class="kpi"><div class="h">本年出金</div><div class="v mono">¥625,675</div></div><div class="kpi"><div class="h">累计汇损</div><div class="v mono dn">−¥30,204</div></div></div>
+    <div class="sec">月度出金</div>
+    <div class="barc"><div class="h">每月 CNY 到账</div>
+      <div class="bar"><span class="bl mono">1月</span><div class="track"><div class="fill" style="width:72%"></div></div><span class="bv mono">¥152K</span></div>
+      <div class="bar"><span class="bl mono">2月</span><div class="track"><div class="fill" style="width:58%"></div></div><span class="bv mono">¥121K</span></div>
+      <div class="bar"><span class="bl mono">3月</span><div class="track"><div class="fill" style="width:90%"></div></div><span class="bv mono">¥189K</span></div>
+      <div class="bar"><span class="bl mono">4月</span><div class="track"><div class="fill" style="width:78%"></div></div><span class="bv mono">¥163K</span></div></div>
+    <div class="sec">各渠道平均汇损 %</div>
+    <div class="barc"><div class="h">越低越好</div>
+      <div class="bar"><span class="bl mono">OKX</span><div class="track"><div class="fill" style="width:18%;background:var(--up)"></div></div><span class="bv mono up">−0.4%</span></div>
+      <div class="bar"><span class="bl mono">币安</span><div class="track"><div class="fill" style="width:26%;background:var(--up)"></div></div><span class="bv mono up">−0.9%</span></div>
+      <div class="bar"><span class="bl mono">熊猫</span><div class="track"><div class="fill" style="width:62%"></div></div><span class="bv mono" style="color:#D97A00">−2.6%</span></div>
+      <div class="bar"><span class="bl mono">JRF</span><div class="track"><div class="fill" style="width:74%;background:var(--down)"></div></div><span class="bv mono dn">−3.7%</span></div>
+      <div class="bar"><span class="bl mono">Wise</span><div class="track"><div class="fill" style="width:100%;background:var(--down)"></div></div><span class="bv mono dn">−6.9%</span></div></div>
+    <div class="tabbar"><div class="tab"><span class="ic">📈</span>预测</div><div class="tab"><span class="ic">＋</span>记账</div><div class="tab"><span class="ic">🕘</span>历史</div><div class="tab on"><span class="ic">📊</span>统计</div><div class="tab"><span class="ic">📖</span>指南</div><div class="tab"><span class="ic">⚙</span>设置</div></div>
+  </div></div></div>
+
+</div></body></html>

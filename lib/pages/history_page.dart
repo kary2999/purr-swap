@@ -1,4 +1,6 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../models/exchange_record.dart';
 import '../services/rate_cache.dart';
@@ -117,6 +119,7 @@ class _HistoryPageState extends State<HistoryPage> {
             if (shown.isEmpty)
               _emptyState()
             else ...[
+              if (shown.length >= 2) _rateTrendChart(shown),
               for (final m in sortedMonths) ...[
                 _monthHeader(m, byMonth[m]!.length),
                 _monthSection(byMonth[m]!),
@@ -128,6 +131,187 @@ class _HistoryPageState extends State<HistoryPage> {
       ),
     );
   }
+
+  /// 汇率走势曲线 — 每笔的全链路实际成交价 (CNY/USDT) vs Wise 中间价。
+  /// 按时间升序;筛选单一渠道时趋势最清晰。
+  Widget _rateTrendChart(List<ExchangeRecord> rs) {
+    final data = [...rs]..sort((a, b) => a.at.compareTo(b.at));
+    final actual = <FlSpot>[];
+    final ref = <FlSpot>[];
+    for (int i = 0; i < data.length; i++) {
+      final r = data[i];
+      if (r.usdtAmount <= 0) continue;
+      actual.add(FlSpot(i.toDouble(), r.effectiveRate));
+      ref.add(FlSpot(i.toDouble(), r.expectedCny / r.usdtAmount));
+    }
+    if (actual.length < 2) return const SizedBox.shrink();
+
+    final ys = [...actual.map((s) => s.y), ...ref.map((s) => s.y)];
+    double minY = ys.reduce(math.min);
+    double maxY = ys.reduce(math.max);
+    final pad = (maxY - minY) * 0.18 + 0.01;
+    minY -= pad;
+    maxY += pad;
+    final lastIdx = (data.length - 1).toDouble();
+
+    String dateAt(double x) {
+      final i = x.round().clamp(0, data.length - 1);
+      return DateFormat('MM/dd').format(data[i].at);
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(IOS.radCard),
+        border: Border.all(color: IOS.separator, width: 0.5),
+        boxShadow: IOS.softShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text('汇率走势 · CNY / USDT',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: IOS.textPrimary)),
+              ),
+              _legendDot(IOS.coral, '实际成交'),
+              const SizedBox(width: 10),
+              _legendDot(IOS.gray, 'Wise 中间价'),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 10),
+            child: Text(
+              _filter == '全部' ? '全部渠道 · 筛选单一渠道趋势更清晰' : '$_filter · 每笔实际到手价',
+              style: const TextStyle(fontSize: 11, color: IOS.gray),
+            ),
+          ),
+          SizedBox(
+            height: 168,
+            child: LineChart(
+              LineChartData(
+                minX: 0,
+                maxX: lastIdx,
+                minY: minY,
+                maxY: maxY,
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: ((maxY - minY) / 3).clamp(0.001, double.infinity),
+                  getDrawingHorizontalLine: (_) =>
+                      const FlLine(color: IOS.separator, strokeWidth: 0.5),
+                ),
+                titlesData: FlTitlesData(
+                  topTitles:
+                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles:
+                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      interval: ((maxY - minY) / 3).clamp(0.001, double.infinity),
+                      getTitlesWidget: (v, _) => Text(
+                        v.toStringAsFixed(2),
+                        style: IOS.monoSize(9, color: IOS.gray),
+                      ),
+                    ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 20,
+                      interval: lastIdx <= 0 ? 1 : lastIdx,
+                      getTitlesWidget: (v, meta) {
+                        if (v != meta.min && v != meta.max) {
+                          return const SizedBox.shrink();
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(dateAt(v),
+                              style: IOS.monoSize(9, color: IOS.gray)),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (_) => IOS.textPrimary.withValues(alpha: 0.9),
+                    getTooltipItems: (spots) => spots.map((s) {
+                      final isActual = s.barIndex == 0;
+                      return LineTooltipItem(
+                        '${isActual ? "实际" : "Wise"} ${s.y.toStringAsFixed(3)}\n${dateAt(s.x)}',
+                        TextStyle(
+                          color: isActual ? IOS.coral2 : Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                lineBarsData: [
+                  // 实际成交 (珊瑚橙实线 + 渐变填充)
+                  LineChartBarData(
+                    spots: actual,
+                    isCurved: true,
+                    curveSmoothness: 0.25,
+                    color: IOS.coral,
+                    barWidth: 2.5,
+                    dotData: FlDotData(
+                      show: actual.length <= 24,
+                      getDotPainter: (s, _, __, ___) => FlDotCirclePainter(
+                          radius: 2.5,
+                          color: IOS.coral,
+                          strokeWidth: 0),
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          IOS.coral.withValues(alpha: 0.18),
+                          IOS.coral.withValues(alpha: 0.0),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Wise 中间价 (灰色虚线参考)
+                  LineChartBarData(
+                    spots: ref,
+                    isCurved: true,
+                    curveSmoothness: 0.25,
+                    color: IOS.gray,
+                    barWidth: 1.5,
+                    dashArray: [4, 3],
+                    dotData: const FlDotData(show: false),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _legendDot(Color c, String label) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(width: 7, height: 7, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
+          const SizedBox(width: 4),
+          Text(label, style: const TextStyle(fontSize: 10, color: IOS.gray)),
+        ],
+      );
 
   Widget _monthHeader(String m, int count) {
     final parts = m.split('-');
@@ -141,6 +325,7 @@ class _HistoryPageState extends State<HistoryPage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(IOS.radCard),
         border: Border.all(color: IOS.separator, width: 0.5),
+        boxShadow: IOS.softShadow,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(IOS.radCard),
