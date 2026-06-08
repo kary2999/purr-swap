@@ -255,22 +255,7 @@ const kChannels = <ChannelMeta>[
           'https://www.pandaremit.com/en/jpn/send-money-to-china'),
     ],
   ),
-  ChannelMeta(
-    '7Bank(JPY)',
-    twoHop: true,
-    jpyQuotaControlled: true,
-    platformFeeJpy: 2000,
-    atmFeeJpy: 165,
-    jpyCnyRateSource: 'Seven Bank',
-    feeKind: FeeKind.external,
-    downloadUrl: 'https://www.sevenbank.co.jp/personal/oversea/',
-    tagline: '外扣 ¥2000/笔(固定) · 便利店 ATM 直发',
-    risk: RiskLevel.low,
-    riskNote: '由 Seven Bank(日本上市行,JFSA 持牌)运营。'
-        '便利店 ATM 直发,操作便利但单笔费用高于熊猫(2000 vs 800)。'
-        '小额不划算,大额体验最便捷。收款方建议微信/支付宝。',
-    riskRefs: [],
-  ),
+  // 7Bank(JPY) 已移除 — 不靠谱, 不再展示。
   ChannelMeta(
     'Wise(JPY)',
     twoHop: true,
@@ -284,7 +269,7 @@ const kChannels = <ChannelMeta>[
     // 这里默认 ¥165 (假设走邮局)，实际看你的入金行
     atmFeeJpy: 165,
     feeKind: FeeKind.internal,
-    downloadUrl: 'https://wise.com/download',
+    downloadUrl: 'https://wise.com/jp/',
     tagline: '内扣 ¥584+1.244% · 入金 ¥165 (邮局)',
     risk: RiskLevel.low,
     riskNote: '英国/欧盟金融牌照,合规。**风控严格**,大额/高频'
@@ -313,17 +298,18 @@ const kChannels = <ChannelMeta>[
     'JRF Wallet',
     twoHop: true,
     jpyQuotaControlled: true,
-    // JRF 无公开 API → 估算: 约 1000 + 0.3% 点差 vs mid
+    // JRF 无公开 API → 估算。实测体感: 到手明显低于熊猫和 Wise,
+    // 所以 forecast 里把它的汇率锚定在熊猫牌价之下; 无熊猫数据时按 Wise mid − 2.5% 兜底。
     platformFeeJpy: 1000,
     atmFeeJpy: 165,
-    markupPct: 0.003,
+    markupPct: 0.025,
     feeKind: FeeKind.estimated,
     downloadUrl: 'https://www.jrf.co.jp/app/',
-    tagline: '估算 ¥1000 + 0.3% (无公开 API,数值参考)',
+    tagline: '估算 · 实测到手低于熊猫/Wise (无公开 API)',
     risk: RiskLevel.low,
     riskNote: '日本金融厅登录番号平台,正规合规。'
         '大额同样需要资金来源证明。收款建议微信/支付宝。'
-        '⚠️ 本 app 中 JRF 的 fee 是估算值,实际请以 JRF app 显示为准。',
+        '⚠️ 无公开 API,本 app 按"实测低于熊猫/Wise"做保守估算,实际请以 JRF app 显示为准。',
     riskRefs: [],
   ),
   ChannelMeta(
@@ -395,8 +381,8 @@ const kChannels = <ChannelMeta>[
           'https://zhuanlan.zhihu.com/p/1911098655341023325'),
       RiskReference('买U卖U的刑事法律风险(律师解读)',
           'https://www.houqilawyer.com/thickpointofview/info.aspx?itemid=2493'),
-      RiskReference('真实案例: U 商面临的刑事风险',
-          'https://web3caff.com/archives/115546'),
+      RiskReference('为什么卖了 USDT 银行卡就被冻(金牙大状律师)',
+          'https://www.jylawyer.com/jinyaxy/jinyazz/20201207/15099.html'),
     ],
   ),
   ChannelMeta(
@@ -419,3 +405,18 @@ ChannelMeta metaFor(String name) =>
         orElse: () => const ChannelMeta(''));
 
 const kRecipients = ['本人', '配偶', '父', '母', '子女', '兄弟姐妹', '其他'];
+
+/// 风控 / 外汇监管动态 —— 跨渠道通用资讯(链接均人工验活, 200 可访问)。
+/// 倒序: 越新越靠前。供预测页"风控资讯"区展示。
+const kRiskNews = <RiskReference>[
+  RiskReference('2026新规·跨境汇款满 5000 元需核实身份(不影响 5万美元年额度)',
+      'https://finance.sina.com.cn/roll/2025-12-05/doc-infzuert9389491.shtml'),
+  RiskReference('国家外汇管理局·个人年度购汇 5万美元便利化额度 官方说明',
+      'https://www.safe.gov.cn/tianjin/2025/0714/2833.html'),
+  RiskReference('黑灰产利用 USDT 的六大犯罪路径(腾讯新闻)',
+      'https://news.qq.com/rain/a/20250928A04JSE00'),
+  RiskReference('加密货币出金用 USDT 银行卡, 暗藏哪些法律问题(腾讯·Web3律师)',
+      'https://news.qq.com/rain/a/20240809A09D8300'),
+  RiskReference('为什么卖了 USDT 银行卡就被冻结(金牙大状律师)',
+      'https://www.jylawyer.com/jinyaxy/jinyazz/20201207/15099.html'),
+];

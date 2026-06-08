@@ -185,7 +185,6 @@ class _SettingsPageState extends State<SettingsPage> {
       'Visa 官方': qs.any((q) => q.source == 'Visa'),
       '熊猫速汇 API': qs.any((q) => q.source == '熊猫速汇'),
       '中行(日本)': qs.any((q) => q.source.contains('中行')),
-      'Seven Bank': qs.any((q) => q.source.contains('Seven')),
     };
 
     return IOSSection(

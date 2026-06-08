@@ -106,6 +106,28 @@ self.addEventListener('fetch', (event) => {
 });
 SW_EOF
 
+# === 显式注册 Service Worker ===
+# Flutter 3.41 bootstrap 的 SW 注册已弃用且实测不生效(getRegistrations()=[]),
+# 导致页面没有受控 SW → Android Chrome 不给"安装应用"。这里手动注入注册脚本,
+# 确保 SW 真正注册并控制页面(满足 Android PWA 安装 + 离线)。
+step "注入显式 SW 注册脚本到 index.html"
+python3 - <<'PYREG'
+p = 'build/web/index.html'
+s = open(p, encoding='utf-8').read()
+reg = ("<script>\n"
+       "if('serviceWorker' in navigator){window.addEventListener('load',function(){"
+       "navigator.serviceWorker.register('flutter_service_worker.js')"
+       ".then(function(r){console.log('[pwa] SW registered scope',r.scope);})"
+       ".catch(function(e){console.warn('[pwa] SW register failed',e);});});}\n"
+       "</script>\n")
+if '[pwa] SW registered' not in s:
+    s = s.replace('</body>', reg + '</body>')
+    open(p, 'w', encoding='utf-8').write(s)
+    print('  injected explicit SW registration')
+else:
+    print('  already present')
+PYREG
+
 # 给 build/web 加个 .nojekyll，让 GitHub Pages 不要 Jekyll 处理（保留 _flutter 等下划线开头目录）
 touch build/web/.nojekyll
 

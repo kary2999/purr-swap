@@ -182,6 +182,7 @@ class _ForecastPageState extends State<ForecastPage> {
             else
               _channelRanking(rows, quotes),
             _riskRanking(),
+            _riskNewsSection(),
             _disclaimer(),
             const SizedBox(height: 24),
           ],
@@ -299,79 +300,63 @@ class _ForecastPageState extends State<ForecastPage> {
     return '${diff.inHours} 小时前更新';
   }
 
-  // ===== 风险排名 =====
+  // ===== 风险排名(逐渠道, 由低到高) =====
   Widget _riskRanking() {
-    final byRisk = <RiskLevel, List<ChannelMeta>>{};
-    for (final c in kChannels) {
-      byRisk.putIfAbsent(c.risk, () => []).add(c);
-    }
+    const order = {
+      RiskLevel.veryLow: 0,
+      RiskLevel.low: 1,
+      RiskLevel.medium: 2,
+      RiskLevel.high: 3,
+    };
+    final sorted = [...kChannels]
+      ..sort((a, b) => order[a.risk]!.compareTo(order[b.risk]!));
     return IOSSection(
-      header: '风险排名(由低到高)',
+      header: '风险排名 · 由低到高',
+      footer: '点任一渠道查看合规说明与相关风控资讯。',
+      children: [for (final c in sorted) _riskRow(c)],
+    );
+  }
+
+  Widget _riskRow(ChannelMeta c) {
+    final (IconData icon, List<Color> colors) = switch (c.risk) {
+      RiskLevel.veryLow => (Icons.shield_outlined, const [IOS.blue, IOS.blueDark]),
+      RiskLevel.low =>
+        (Icons.check_circle_outline, const [IOS.green, Color(0xFF1FAE6B)]),
+      RiskLevel.medium =>
+        (Icons.warning_amber_outlined, const [IOS.orange, Color(0xFFE8923A)]),
+      RiskLevel.high => (Icons.error_outline, const [IOS.red, Color(0xFFC93400)]),
+    };
+    return IOSRow(
+      leadingIcon: icon,
+      iconColors: colors,
+      label: c.name,
+      sub: c.tagline.isNotEmpty ? c.tagline : '点击查看风险说明',
+      trailing: IOSBadge(risk: _toBadgeRisk(c.risk), text: _riskLabel(c.risk)),
+      chevron: true,
+      onTap: () => _showRiskDetail(c),
+    );
+  }
+
+  // ===== 风控资讯 · 外汇监管动态(跨渠道通用)=====
+  Widget _riskNewsSection() {
+    return IOSSection(
+      header: '风控资讯 · 外汇监管动态',
+      footer: '换汇 / 出金相关的合规与风控资讯, 点击在浏览器打开。',
       children: [
-        if (byRisk[RiskLevel.veryLow] != null)
-          _riskRow(
-            Icons.shield_outlined,
-            const [IOS.blue, IOS.blueDark],
-            byRisk[RiskLevel.veryLow]!.map((c) => c.name).join(' / '),
-            _firstNote(byRisk[RiskLevel.veryLow]!),
-            RiskTag.veryLow,
-            '极低',
-          ),
-        if (byRisk[RiskLevel.low] != null)
-          _riskRow(
-            Icons.check_circle_outline,
-            const [IOS.green, Color(0xFF00A86B)],
-            byRisk[RiskLevel.low]!.map((c) => c.name.replaceAll('(JPY)', '')).join(' / '),
-            '日本金融厅注册 · 收款仅微信支付宝',
-            RiskTag.low,
-            '低',
-          ),
-        if (byRisk[RiskLevel.medium] != null)
-          _riskRow(
-            Icons.warning_amber_outlined,
-            const [IOS.orange, Color(0xFFFF6B00)],
-            byRisk[RiskLevel.medium]!.map((c) => c.name).join(' / '),
-            '监管灰区 · 无法证明收入来源',
-            RiskTag.medium,
-            '中',
-          ),
-        if (byRisk[RiskLevel.high] != null)
-          _riskRow(
-            Icons.error_outline,
-            const [IOS.red, Color(0xFFC93400)],
-            byRisk[RiskLevel.high]!.map((c) => c.name).join(' / '),
-            '冻卡风险 · 个人卡可能被定为涉案',
-            RiskTag.high,
-            '高',
+        for (final n in kRiskNews)
+          IOSRow(
+            leadingIcon: Icons.article_outlined,
+            iconColors: const [IOS.gray3, IOS.gray],
+            label: n.title,
+            chevron: true,
+            onTap: () => _open(n.url),
           ),
       ],
     );
   }
 
-  String _firstNote(List<ChannelMeta> cs) {
-    if (cs.isEmpty) return '';
-    final n = cs.first.tagline;
-    return n.isNotEmpty ? n : '合规合法';
-  }
-
-  Widget _riskRow(IconData icon, List<Color> colors, String label, String sub,
-      RiskTag risk, String riskLabel) {
-    return IOSRow(
-      leadingIcon: icon,
-      iconColors: colors,
-      label: label,
-      sub: sub,
-      trailing: IOSBadge(risk: risk, text: riskLabel),
-      chevron: true,
-      onTap: () => _showRiskDetail(label, risk),
-    );
-  }
-
-  void _showRiskDetail(String label, RiskTag risk) {
-    final ch = kChannels.firstWhere(
-        (c) => label.contains(c.name.replaceAll('(JPY)', '')) ||
-            c.name.contains(label.split(' / ').first),
-        orElse: () => kChannels.first);
+  void _showRiskDetail(ChannelMeta ch) {
+    final risk = _toBadgeRisk(ch.risk);
     showModalBottomSheet(
       context: context,
       backgroundColor: IOS.grayBg,
@@ -551,6 +536,14 @@ class _ForecastPageState extends State<ForecastPage> {
                   ? '✓ 使用你的成交价 ¥${activeRate.toStringAsFixed(4)}'
                   : '空白 = 默认 $defaultSource ¥${defaultRate.toStringAsFixed(4)}',
               style: const TextStyle(fontSize: 11, color: IOS.gray),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Text(
+              '说明: 币安/OKX 的 CNY/USDT 是 P2P 实时成交价(同一盘口) — '
+              '既是你在国内「买 U」的成本基准(leg0), 也是「直接卖 U 换 CNY」的到手价。',
+              style: TextStyle(fontSize: 10, color: IOS.textTertiary, height: 1.45),
             ),
           ),
         ],
