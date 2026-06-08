@@ -1,7 +1,7 @@
 name: currency_exchange
 description: Purr Swap · 换金所 — USDT 多渠道比价 / 记账 / 风险提示
 publish_to: 'none'
-version: 0.3.6
+version: 0.3.7
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
