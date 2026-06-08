@@ -18,29 +18,52 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="USDT 多渠道比价 / 三段式记账 / 风险提示">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="currency_exchange">
+  <meta name="apple-mobile-web-app-title" content="Purr Swap">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>currency_exchange</title>
+  <title>Purr Swap · 换金所</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- 开屏 splash: 加载 Flutter(~3MB)期间先显示品牌猫, 避免空白白屏 -->
+  <style>
+    #purr-splash{
+      position:fixed; inset:0; z-index:99999;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      background:#FBF6F0; transition:opacity .35s ease;
+      font-family:"PingFang SC","Noto Sans SC",-apple-system,sans-serif;
+    }
+    #purr-splash img{ width:112px; height:112px; border-radius:26px;
+      box-shadow:0 8px 24px rgba(232,112,74,.18); }
+    #purr-splash .nm{ margin-top:18px; font-size:18px; font-weight:600; color:#1F2937; letter-spacing:.5px; }
+    #purr-splash .sp{ margin-top:18px; width:22px; height:22px; border-radius:50%;
+      border:2.5px solid rgba(232,112,74,.25); border-top-color:#E8704A;
+      animation:purr-spin .8s linear infinite; }
+    @keyframes purr-spin{ to{ transform:rotate(360deg); } }
+    #purr-splash.hide{ opacity:0; pointer-events:none; }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <div id="purr-splash">
+    <img src="icons/Icon-512.png" alt="Purr Swap">
+    <div class="nm">Purr Swap · 换金所</div>
+    <div class="sp"></div>
+  </div>
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+    (function(){
+      function hide(){ var s=document.getElementById('purr-splash');
+        if(s){ s.classList.add('hide'); setTimeout(function(){ if(s) s.remove(); }, 400); } }
+      window.addEventListener('flutter-first-frame', hide);
+      setTimeout(hide, 15000); // 兜底: 万一事件没触发也不会卡死在 splash
+    })();
+  </script>
 </body>
 </html>
