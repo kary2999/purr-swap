@@ -538,6 +538,14 @@ class _ForecastPageState extends State<ForecastPage> {
               style: const TextStyle(fontSize: 11, color: IOS.gray),
             ),
           ),
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Text(
+              '说明: 币安/OKX 的 CNY/USDT 是 P2P 实时成交价(同一盘口) — '
+              '既是你在国内「买 U」的成本基准(leg0), 也是「直接卖 U 换 CNY」的到手价。',
+              style: TextStyle(fontSize: 10, color: IOS.textTertiary, height: 1.45),
+            ),
+          ),
         ],
       ),
     );

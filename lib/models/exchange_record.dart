@@ -255,22 +255,7 @@ const kChannels = <ChannelMeta>[
           'https://www.pandaremit.com/en/jpn/send-money-to-china'),
     ],
   ),
-  ChannelMeta(
-    '7Bank(JPY)',
-    twoHop: true,
-    jpyQuotaControlled: true,
-    platformFeeJpy: 2000,
-    atmFeeJpy: 165,
-    jpyCnyRateSource: 'Seven Bank',
-    feeKind: FeeKind.external,
-    downloadUrl: 'https://www.sevenbank.co.jp/personal/oversea/',
-    tagline: '外扣 ¥2000/笔(固定) · 便利店 ATM 直发',
-    risk: RiskLevel.low,
-    riskNote: '由 Seven Bank(日本上市行,JFSA 持牌)运营。'
-        '便利店 ATM 直发,操作便利但单笔费用高于熊猫(2000 vs 800)。'
-        '小额不划算,大额体验最便捷。收款方建议微信/支付宝。',
-    riskRefs: [],
-  ),
+  // 7Bank(JPY) 已移除 — 不靠谱, 不再展示。
   ChannelMeta(
     'Wise(JPY)',
     twoHop: true,
@@ -313,17 +298,18 @@ const kChannels = <ChannelMeta>[
     'JRF Wallet',
     twoHop: true,
     jpyQuotaControlled: true,
-    // JRF 无公开 API → 估算: 约 1000 + 0.3% 点差 vs mid
+    // JRF 无公开 API → 估算。实测体感: 到手明显低于熊猫和 Wise,
+    // 所以 forecast 里把它的汇率锚定在熊猫牌价之下; 无熊猫数据时按 Wise mid − 2.5% 兜底。
     platformFeeJpy: 1000,
     atmFeeJpy: 165,
-    markupPct: 0.003,
+    markupPct: 0.025,
     feeKind: FeeKind.estimated,
     downloadUrl: 'https://www.jrf.co.jp/app/',
-    tagline: '估算 ¥1000 + 0.3% (无公开 API,数值参考)',
+    tagline: '估算 · 实测到手低于熊猫/Wise (无公开 API)',
     risk: RiskLevel.low,
     riskNote: '日本金融厅登录番号平台,正规合规。'
         '大额同样需要资金来源证明。收款建议微信/支付宝。'
-        '⚠️ 本 app 中 JRF 的 fee 是估算值,实际请以 JRF app 显示为准。',
+        '⚠️ 无公开 API,本 app 按"实测低于熊猫/Wise"做保守估算,实际请以 JRF app 显示为准。',
     riskRefs: [],
   ),
   ChannelMeta(

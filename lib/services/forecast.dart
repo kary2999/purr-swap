@@ -53,7 +53,6 @@ class ForecastService {
     final okx = q('OKX-C2C', 'USDT/CNY')?.mid;
     final pandaJpyCny = q('熊猫速汇', 'JPY/CNY')?.mid;
     final bocJpyCny = q('中行(日本)', 'JPY/CNY')?.mid;
-    final sevenBankJpyCny = q('Seven Bank', 'JPY/CNY')?.mid;
 
     final rows = <ForecastRow>[];
 
@@ -141,13 +140,6 @@ class ForecastService {
             leg2Measured = true;
             leg2FeeJpy = c.platformFeeJpy;
             break;
-          case 'Seven Bank':
-            leg2Rate = sevenBankJpyCny;
-            leg2Label = '7Bank 牌价';
-            leg2RateSource = '熊猫 API · 7Bank';
-            leg2Measured = true;
-            leg2FeeJpy = c.platformFeeJpy;
-            break;
           // === 无自家牌价 API ===
           default:
             if (c.name == 'Wise(JPY)' && wiseJpyCnyQ != null && wiseJpyCnyQ.isMeasured) {
@@ -166,6 +158,20 @@ class ForecastService {
               leg2Rate = wiseJpyCny != null ? wiseJpyCny * (1 - c.markupPct) : null;
               leg2Label = 'Wise mid − ${(c.markupPct * 100).toStringAsFixed(1)}% TTS';
               leg2RateSource = 'Wise mid · TTS 估算';
+              leg2Measured = false;
+            } else if (c.name == 'JRF Wallet') {
+              // JRF 无公开 API。实测到手明显低于熊猫和 Wise →
+              // 把汇率锚定在熊猫牌价之下(× 0.99); 无熊猫数据时 Wise mid − markup 兜底。
+              leg2FeeJpy = c.platformFeeJpy;
+              if (pandaJpyCny != null) {
+                leg2Rate = pandaJpyCny * 0.99;
+                leg2Label = '估算: 熊猫牌价 − 1%';
+              } else {
+                leg2Rate =
+                    wiseJpyCny != null ? wiseJpyCny * (1 - c.markupPct) : null;
+                leg2Label = 'Wise mid − ${(c.markupPct * 100).toStringAsFixed(1)}%';
+              }
+              leg2RateSource = '内置估算(实测低于熊猫/Wise)';
               leg2Measured = false;
             } else {
               // JRF (无 API) / Wise fallback / 其他
