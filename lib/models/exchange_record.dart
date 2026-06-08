@@ -284,7 +284,7 @@ const kChannels = <ChannelMeta>[
     // 这里默认 ¥165 (假设走邮局)，实际看你的入金行
     atmFeeJpy: 165,
     feeKind: FeeKind.internal,
-    downloadUrl: 'https://wise.com/download',
+    downloadUrl: 'https://wise.com/jp/',
     tagline: '内扣 ¥584+1.244% · 入金 ¥165 (邮局)',
     risk: RiskLevel.low,
     riskNote: '英国/欧盟金融牌照,合规。**风控严格**,大额/高频'
@@ -395,8 +395,8 @@ const kChannels = <ChannelMeta>[
           'https://zhuanlan.zhihu.com/p/1911098655341023325'),
       RiskReference('买U卖U的刑事法律风险(律师解读)',
           'https://www.houqilawyer.com/thickpointofview/info.aspx?itemid=2493'),
-      RiskReference('真实案例: U 商面临的刑事风险',
-          'https://web3caff.com/archives/115546'),
+      RiskReference('为什么卖了 USDT 银行卡就被冻(金牙大状律师)',
+          'https://www.jylawyer.com/jinyaxy/jinyazz/20201207/15099.html'),
     ],
   ),
   ChannelMeta(
@@ -419,3 +419,18 @@ ChannelMeta metaFor(String name) =>
         orElse: () => const ChannelMeta(''));
 
 const kRecipients = ['本人', '配偶', '父', '母', '子女', '兄弟姐妹', '其他'];
+
+/// 风控 / 外汇监管动态 —— 跨渠道通用资讯(链接均人工验活, 200 可访问)。
+/// 倒序: 越新越靠前。供预测页"风控资讯"区展示。
+const kRiskNews = <RiskReference>[
+  RiskReference('2026新规·跨境汇款满 5000 元需核实身份(不影响 5万美元年额度)',
+      'https://finance.sina.com.cn/roll/2025-12-05/doc-infzuert9389491.shtml'),
+  RiskReference('国家外汇管理局·个人年度购汇 5万美元便利化额度 官方说明',
+      'https://www.safe.gov.cn/tianjin/2025/0714/2833.html'),
+  RiskReference('黑灰产利用 USDT 的六大犯罪路径(腾讯新闻)',
+      'https://news.qq.com/rain/a/20250928A04JSE00'),
+  RiskReference('加密货币出金用 USDT 银行卡, 暗藏哪些法律问题(腾讯·Web3律师)',
+      'https://news.qq.com/rain/a/20240809A09D8300'),
+  RiskReference('为什么卖了 USDT 银行卡就被冻结(金牙大状律师)',
+      'https://www.jylawyer.com/jinyaxy/jinyazz/20201207/15099.html'),
+];
