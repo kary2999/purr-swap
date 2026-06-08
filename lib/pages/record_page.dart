@@ -27,6 +27,20 @@ class _RecordPageState extends State<RecordPage> {
 
   ChannelMeta get _meta => metaFor(_channel);
 
+  @override
+  void initState() {
+    super.initState();
+    // leg0 买入价默认回显 Wise USD/CNY 价 (≈ CNY/USDT), 用户可改
+    final w = _defaultLeg0();
+    if (w != null) _cnyRateCtl.text = w;
+  }
+
+  /// Wise USD/CNY 中间价(≈ CNY/USDT 买入价基准), 取不到返回 null
+  String? _defaultLeg0() {
+    final r = RateCache.instance.referenceRate;
+    return (r != null && r > 0) ? r.toStringAsFixed(4) : null;
+  }
+
   Future<void> _save() async {
     final usdt = double.tryParse(_usdtCtl.text.trim());
     final cny = double.tryParse(_cnyCtl.text.trim());
@@ -84,7 +98,7 @@ class _RecordPageState extends State<RecordPage> {
       return;
     }
     _usdtCtl.text = '1000';
-    _cnyRateCtl.clear();
+    _cnyRateCtl.text = _defaultLeg0() ?? '';
     _jpyCtl.text = '158700';
     _cnyCtl.text = '6720';
     _noteCtl.clear();
@@ -189,7 +203,7 @@ class _RecordPageState extends State<RecordPage> {
               leading: [
                 IOSNavLink('清空', onTap: () {
                   _usdtCtl.text = '1000';
-    _cnyRateCtl.clear();
+                  _cnyRateCtl.text = _defaultLeg0() ?? '';
                   _jpyCtl.text = '158700';
                   _cnyCtl.text = '6720';
                   _noteCtl.clear();
@@ -234,7 +248,8 @@ class _RecordPageState extends State<RecordPage> {
               header: '金额',
               children: [
                 _amountRow('USDT 投入', _usdtCtl, ' '),
-                _amountRow('CNY/USDT 买入价 (leg0, 选填)', _cnyRateCtl, ''),
+                _amountRow('CNY/USDT 买入价 (leg0)', _cnyRateCtl, '',
+                    hint: _defaultLeg0() ?? '选填'),
                 if (twoHop) _amountRow('中转 JPY', _jpyCtl, ''),
                 _amountRow('实收 CNY', _cnyCtl, '¥'),
               ],
@@ -291,29 +306,34 @@ class _RecordPageState extends State<RecordPage> {
     );
   }
 
-  Widget _amountRow(String label, TextEditingController ctl, String prefix) {
+  Widget _amountRow(String label, TextEditingController ctl, String prefix,
+      {String? hint}) {
     return Container(
       constraints: const BoxConstraints(minHeight: 48),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          Text(label, style: const TextStyle(fontSize: 15, color: IOS.textPrimary)),
+          Flexible(
+            child: Text(label,
+                style: const TextStyle(fontSize: 15, color: IOS.textPrimary)),
+          ),
           const Spacer(),
           if (prefix.isNotEmpty)
-            Text(prefix,
-                style: IOS.monoSize(16, color: IOS.blue)),
+            Text(prefix, style: IOS.monoSize(16, color: IOS.blue)),
           SizedBox(
-            width: 180,
+            width: 170,
             child: TextField(
               controller: ctl,
               textAlign: TextAlign.right,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               style: IOS.monoSize(16, color: IOS.blue),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 border: InputBorder.none,
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                hintText: hint,
+                hintStyle: IOS.monoSize(15, color: IOS.gray2),
               ),
               onChanged: (_) => setState(() {}),
             ),
