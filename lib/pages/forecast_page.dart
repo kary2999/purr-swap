@@ -19,8 +19,66 @@ class ForecastPage extends StatefulWidget {
 }
 
 class _ForecastPageState extends State<ForecastPage> {
-  static const _presets = [100, 500, 1000, 5000, 10000];
-  int _usdt = 1000;
+  static const _usdtPresets = [100, 500, 1000, 5000, 10000];
+  static const _jpyPresets = [10000, 50000, 100000, 500000, 1000000];
+  String _unit = 'USDT'; // 'USDT' | 'JPY'
+  int _amount = 1000; // 当前单位下的金额
+
+  List<int> get _presets => _unit == 'USDT' ? _usdtPresets : _jpyPresets;
+
+  /// 真正喂给 ForecastService 的 USDT 量。JPY 模式按 Wise USD/JPY 折算。
+  double get _usdtForForecast {
+    if (_unit == 'USDT') return _amount.toDouble();
+    final usdJpy = RateCache.instance.usdJpyReference;
+    if (usdJpy == null || usdJpy <= 0) return 0;
+    return _amount / usdJpy;
+  }
+
+  /// 切换单位时按当前汇率换算金额, 保持等值
+  void _setUnit(String u) {
+    if (u == _unit) return;
+    final usdJpy = RateCache.instance.usdJpyReference;
+    final usdt = _usdtForForecast;
+    setState(() {
+      if (u == 'JPY') {
+        _amount = (usdJpy != null && usdJpy > 0)
+            ? (usdt * usdJpy).round()
+            : 150000;
+      } else {
+        _amount = usdt > 0 ? usdt.round() : 1000;
+      }
+      _unit = u;
+    });
+  }
+
+  /// 自定义金额输入
+  Future<void> _editAmount() async {
+    final ctl = TextEditingController(text: _amount.toString());
+    final v = await showDialog<int>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('输入 $_unit 金额'),
+        content: TextField(
+          controller: ctl,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: false),
+          decoration: InputDecoration(suffixText: _unit),
+          onSubmitted: (s) =>
+              Navigator.pop(context, int.tryParse(s.trim().replaceAll(',', ''))),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context), child: const Text('取消')),
+          FilledButton(
+            onPressed: () => Navigator.pop(
+                context, int.tryParse(ctl.text.trim().replaceAll(',', ''))),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+    if (v != null && v > 0) setState(() => _amount = v);
+  }
   bool _loading = false;
   UpdateInfo? _update;
   bool _updateDismissed = false;
@@ -141,7 +199,7 @@ class _ForecastPageState extends State<ForecastPage> {
   Widget build(BuildContext c) {
     final quotes = RateCache.instance.snapshot;
     final rows = ForecastService.forecast(
-      usdt: _usdt.toDouble(),
+      usdt: _usdtForForecast,
       quotes: quotes,
       cnyToUsdtRate: _cnyToUsdtRate,
     );
@@ -168,14 +226,33 @@ class _ForecastPageState extends State<ForecastPage> {
             ),
             if (_update != null) _buildUpdateBanner(_update!),
             _ticker(quotes, lastFetch),
-            HeroInputCard(
-              label: 'USDT INPUT',
-              value: NumberFormat('#,###').format(_usdt),
-              unit: 'USDT',
-              presets: _presets,
-              activePreset: _usdt,
-              onPresetTap: (v) => setState(() => _usdt = v),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+              child: IOSSegmentedControl(
+                items: const ['USDT', 'JPY'],
+                active: _unit == 'USDT' ? 0 : 1,
+                onChange: (i) => _setUnit(i == 0 ? 'USDT' : 'JPY'),
+              ),
             ),
+            HeroInputCard(
+              label: _unit == 'USDT' ? 'USDT INPUT · 点击可改' : 'JPY INPUT · 点击可改',
+              value: NumberFormat('#,###').format(_amount),
+              unit: _unit,
+              presets: _presets,
+              activePreset: _amount,
+              onPresetTap: (v) => setState(() => _amount = v),
+              onTap: _editAmount,
+            ),
+            if (_unit == 'JPY')
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Text(
+                  RateCache.instance.usdJpyReference != null
+                      ? '≈ ${NumberFormat('#,##0').format(_usdtForForecast)} USDT (按 Wise USD/JPY ${RateCache.instance.usdJpyReference!.toStringAsFixed(2)} 折算)'
+                      : 'Wise USD/JPY 未就绪, 先刷新汇率',
+                  style: const TextStyle(fontSize: 11, color: IOS.textTertiary),
+                ),
+              ),
             _cnyRateInput(quotes, rows.isNotEmpty ? rows.first.inputCny : null),
             if (quotes.isEmpty && !_loading)
               _emptyState()
@@ -451,7 +528,7 @@ class _ForecastPageState extends State<ForecastPage> {
             : '兜底 7.20';
     final activeRate = _cnyToUsdtRate ?? defaultRate;
     final hasInput = _cnyToUsdtRate != null;
-    final inputCny = currentInputCny ?? (_usdt * activeRate);
+    final inputCny = currentInputCny ?? (_usdtForForecast * activeRate);
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),

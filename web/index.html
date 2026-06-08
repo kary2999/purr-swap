@@ -65,5 +65,69 @@
       setTimeout(hide, 15000); // 兜底: 万一事件没触发也不会卡死在 splash
     })();
   </script>
+
+  <!-- PWA 安装条: 安卓走 beforeinstallprompt 直接拉起安装; iOS 显示手动指引 -->
+  <style>
+    #pwa-install{position:fixed;left:12px;right:12px;
+      bottom:calc(86px + env(safe-area-inset-bottom, 0px));z-index:90000;
+      background:#fff;border:1px solid #ECECEF;border-radius:14px;
+      box-shadow:0 6px 24px rgba(0,0,0,.14);padding:11px 12px;
+      display:none;align-items:center;gap:10px;
+      font-family:"PingFang SC","Noto Sans SC",-apple-system,sans-serif;}
+    #pwa-install img{width:36px;height:36px;border-radius:9px;flex:none;}
+    #pwa-install .tx{flex:1;font-size:13px;color:#1F2937;line-height:1.45;}
+    #pwa-install .tx b{color:#E8704A;}
+    #pwa-install .btn{background:#E8704A;color:#fff;border:none;border-radius:999px;
+      padding:9px 18px;font-size:13px;font-weight:600;white-space:nowrap;flex:none;}
+    #pwa-install .cl{background:none;border:none;color:#9CA3AF;font-size:20px;
+      line-height:1;padding:0 2px;flex:none;}
+  </style>
+  <div id="pwa-install">
+    <img src="icons/Icon-192.png" alt="">
+    <div class="tx" id="pwa-tx">把 <b>Purr Swap</b> 装到桌面, 像 App 一样打开</div>
+    <button class="btn" id="pwa-btn">安装</button>
+    <button class="cl" id="pwa-cl" aria-label="关闭">&times;</button>
+  </div>
+  <script>
+    (function(){
+      var deferred=null;
+      var bar=document.getElementById('pwa-install');
+      var btn=document.getElementById('pwa-btn');
+      var tx=document.getElementById('pwa-tx');
+      var cl=document.getElementById('pwa-cl');
+      function standalone(){
+        return window.matchMedia('(display-mode: standalone)').matches
+          || window.navigator.standalone===true;
+      }
+      function isIOS(){ return /iphone|ipad|ipod/i.test(navigator.userAgent)
+        || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1); }
+      try{ if(localStorage.getItem('pwa-dismissed')==='1') return; }catch(e){}
+      cl.addEventListener('click',function(){
+        bar.style.display='none'; try{localStorage.setItem('pwa-dismissed','1');}catch(e){}
+      });
+      // Android / Chromium: 满足可安装条件时触发
+      window.addEventListener('beforeinstallprompt',function(e){
+        e.preventDefault(); deferred=e;
+        if(!standalone()) bar.style.display='flex';
+      });
+      btn.addEventListener('click',async function(){
+        if(!deferred) return;
+        deferred.prompt();
+        try{ await deferred.userChoice; }catch(e){}
+        deferred=null; bar.style.display='none';
+      });
+      // iOS Safari: 不触发 beforeinstallprompt → 给手动指引
+      window.addEventListener('load',function(){
+        setTimeout(function(){
+          if(standalone()||deferred) return;
+          if(isIOS()){
+            tx.innerHTML='装到主屏: 点底部 <b>⎙ 分享</b> → <b>添加到主屏幕</b>';
+            btn.style.display='none';
+            bar.style.display='flex';
+          }
+        },2500);
+      });
+    })();
+  </script>
 </body>
 </html>

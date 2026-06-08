@@ -311,22 +311,32 @@ class HeroInputCard extends StatelessWidget {
                       letterSpacing: 0.4,
                     )),
                 const SizedBox(height: 2),
-                RichText(
-                  text: TextSpan(
-                    style: IOS.monoSize(42,
-                        weight: FontWeight.w700, color: Colors.white),
-                    children: [
-                      TextSpan(text: value),
-                      TextSpan(
-                        text: unit,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white.withValues(alpha: 0.7),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: RichText(
+                        text: TextSpan(
+                          style: IOS.monoSize(42,
+                              weight: FontWeight.w700, color: Colors.white),
+                          children: [
+                            TextSpan(text: value),
+                            TextSpan(
+                              text: unit,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(Icons.edit_outlined,
+                        size: 17, color: Colors.white.withValues(alpha: 0.7)),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 Wrap(
@@ -366,9 +376,18 @@ class HeroInputCard extends StatelessWidget {
     );
   }
 
-  String _formatPreset(int v) =>
-      v >= 10000 ? '${v ~/ 1000}K' : v.toString().replaceAllMapped(
-          RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+  String _formatPreset(int v) {
+    String comma(int n) => n.toString().replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    if (unit == 'JPY') {
+      if (v >= 10000) {
+        final w = v / 10000;
+        return '${w == w.roundToDouble() ? w.toStringAsFixed(0) : w.toStringAsFixed(1)}万';
+      }
+      return comma(v);
+    }
+    return v >= 10000 ? '${v ~/ 1000}K' : comma(v);
+  }
 }
 
 /// === Grouped Section (header + list + footer) ===
@@ -555,8 +574,8 @@ class IOSFormRow extends StatelessWidget {
           children: [
             Text(label,
                 style: const TextStyle(fontSize: 15, color: IOS.textPrimary)),
-            const Spacer(),
-            Flexible(
+            const SizedBox(width: 12),
+            Expanded(
               child: Text(
                 value,
                 textAlign: TextAlign.right,
@@ -569,7 +588,10 @@ class IOSFormRow extends StatelessWidget {
               ),
             ),
             if (chevron)
-              const Icon(Icons.chevron_right, color: IOS.gray2, size: 18),
+              const Padding(
+                padding: EdgeInsets.only(left: 4),
+                child: Icon(Icons.chevron_right, color: IOS.gray2, size: 18),
+              ),
           ],
         ),
       ),
