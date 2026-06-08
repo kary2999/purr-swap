@@ -191,7 +191,15 @@
       "Bash(git check-ignore *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(curl -s \"https://kary2999.github.io/purr-swap/index.html?t=$\\(date +%s%N\\)\")",
+      "Bash(python3 -c \"import websocket; print\\('websocket-client ok'\\)\")",
+      "Bash(python3 -c \"import websockets; print\\('websockets ok'\\)\")",
+      "Bash(pkill -f \"ps_cdp_prof\")",
+      "Bash(curl -sI \"https://kary2999.github.io/purr-swap/main.dart.js\")",
+      "Bash(git checkout *)",
+      "Bash(curl -s \"https://kary2999.github.io/purr-swap/flutter_bootstrap.js?t=$\\(date +%s%N\\)\")",
+      "Bash(curl -s \"https://kary2999.github.io/purr-swap/flutter_service_worker.js?t=$\\(date +%s%N\\)\")"
     ]
   }
 }

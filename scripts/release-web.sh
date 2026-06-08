@@ -60,6 +60,13 @@ sed -i '' "/<meta charset/a\\
 sed -i '' "s|flutter_bootstrap\\.js\"|flutter_bootstrap.js?v=$CUR_VER\"|g" \
   build/web/index.html
 
+# flutter_bootstrap.js: 内部 "main.dart.js" 字面量加 ?v=$VER
+# 关键: main.dart.js 默认无版本戳, GitHub Pages 给它 max-age=600 → 浏览器/SW 会缓存旧 bundle,
+# 表现为 index 已是新版、但实际跑的代码还是旧的 ("看不到更新")。加 ?v= 让每版 URL 唯一,
+# 彻底绕开浏览器 HTTP 缓存。(本项目用自定义 network-first SW, 无预缓存清单, ?v= 不冲突)
+sed -i '' "s|\"main\\.dart\\.js\"|\"main.dart.js?v=$CUR_VER\"|g" \
+  build/web/flutter_bootstrap.js
+
 # === 自定义 Service Worker(恢复 PWA 可安装)===
 # Flutter 3.41+ 内置 SW 已弃用为"自注销 stub"(无 fetch handler / 激活即 unregister),
 # 导致 Chrome 不再判定为可安装 PWA。这里用自定义 SW 覆盖它:
@@ -71,9 +78,14 @@ step "写入自定义 service worker (恢复 PWA 安装能力)"
 cat > build/web/flutter_service_worker.js <<'SW_EOF'
 'use strict';
 // Purr Swap 自定义 SW — 网络优先 + 缓存兜底, 带 fetch handler 以满足 PWA 可安装条件。
-const CACHE = 'purr-swap-runtime-v1';
+const CACHE = 'purr-swap-runtime-v2';
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+self.addEventListener('activate', (event) => event.waitUntil((async () => {
+  // 清掉旧版本缓存(含被缓存的旧 main.dart.js), 避免残留旧代码
+  const keys = await caches.keys();
+  await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+  await self.clients.claim();
+})()));
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
