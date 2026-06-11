@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/exchange_record.dart';
 import '../services/quota.dart';
 import '../services/rate_cache.dart';
+import '../services/usdt_cny_history.dart';
 import '../storage/local_store.dart';
 import '../theme/ios_theme.dart';
 import '../widgets/ios_widgets.dart';
@@ -26,19 +27,57 @@ class _RecordPageState extends State<RecordPage> {
   bool _saving = false;
 
   ChannelMeta get _meta => metaFor(_channel);
+  UsdtCnyHistory? _hist;
+  bool _leg0Edited = false;
 
   @override
   void initState() {
     super.initState();
-    // leg0 买入价默认回显 Wise USD/CNY 价 (≈ CNY/USDT), 用户可改
-    final w = _defaultLeg0();
-    if (w != null) _cnyRateCtl.text = w;
+    _prefillLeg0();
+    _loadHist();
   }
 
-  /// Wise USD/CNY 中间价(≈ CNY/USDT 买入价基准), 取不到返回 null
+  Future<void> _loadHist() async {
+    try {
+      final h = await UsdtCnyHistory.load();
+      if (mounted) {
+        setState(() => _hist = h);
+        _prefillLeg0();
+      }
+    } catch (_) {}
+  }
+
+  void _prefillLeg0() {
+    if (_leg0Edited) return;
+    final d = _defaultLeg0();
+    if (d != null) _cnyRateCtl.text = d;
+  }
+
+  /// leg0 买入价默认 = 成交当天**历史币安 USDT/CNY 估算价**; 拿不到则退回 Wise USD/CNY。
   String? _defaultLeg0() {
-    final r = RateCache.instance.referenceRate;
+    final h = _hist;
+    if (h != null) {
+      final est = h.estBinanceSellAt(_at, RateCache.instance.snapshot);
+      if (est != null && est > 0) return est.toStringAsFixed(4);
+    }
+    final r = RateCache.instance.referenceRate; // 兜底
     return (r != null && r > 0) ? r.toStringAsFixed(4) : null;
+  }
+
+  /// leg0 来源说明(写在金额区脚注)
+  String _leg0Source() {
+    final h = _hist;
+    final d =
+        '${_at.year}-${_at.month.toString().padLeft(2, '0')}-${_at.day.toString().padLeft(2, '0')}';
+    if (h != null) {
+      final cg = h.coingeckoAt(_at);
+      final prem = h.premium(RateCache.instance.snapshot);
+      if (cg != null) {
+        return 'leg0 买入价默认 = 币安 USDT/CNY 估算 @$d · '
+            '来源: CoinGecko 历史 ${cg.toStringAsFixed(4)} × 实时溢价 ${((prem - 1) * 100).toStringAsFixed(1)}% (可改)';
+      }
+    }
+    return 'leg0 买入价默认 = Wise USD/CNY (历史币安数据未就绪, 可改)';
   }
 
   Future<void> _save() async {
@@ -98,6 +137,7 @@ class _RecordPageState extends State<RecordPage> {
       return;
     }
     _usdtCtl.text = '1000';
+    _leg0Edited = false;
     _cnyRateCtl.text = _defaultLeg0() ?? '';
     _jpyCtl.text = '158700';
     _cnyCtl.text = '6720';
@@ -128,6 +168,7 @@ class _RecordPageState extends State<RecordPage> {
         context: context, initialTime: TimeOfDay.fromDateTime(_at));
     if (t == null) return;
     setState(() => _at = DateTime(d.year, d.month, d.day, t.hour, t.minute));
+    _prefillLeg0(); // 日期变了, 未手改则按新日期重填历史币安价
   }
 
   Future<void> _pickChannel() async {
@@ -203,6 +244,7 @@ class _RecordPageState extends State<RecordPage> {
               leading: [
                 IOSNavLink('清空', onTap: () {
                   _usdtCtl.text = '1000';
+                  _leg0Edited = false;
                   _cnyRateCtl.text = _defaultLeg0() ?? '';
                   _jpyCtl.text = '158700';
                   _cnyCtl.text = '6720';
@@ -246,10 +288,12 @@ class _RecordPageState extends State<RecordPage> {
             ),
             IOSSection(
               header: '金额',
+              footer: _leg0Source(),
               children: [
                 _amountRow('USDT 投入', _usdtCtl, ' '),
                 _amountRow('CNY/USDT 买入价 (leg0)', _cnyRateCtl, '',
-                    hint: _defaultLeg0() ?? '选填'),
+                    hint: _defaultLeg0() ?? '选填',
+                    onChanged: (v) => _leg0Edited = true),
                 if (twoHop) _amountRow('中转 JPY', _jpyCtl, ''),
                 _amountRow('实收 CNY', _cnyCtl, '¥'),
               ],
@@ -307,21 +351,19 @@ class _RecordPageState extends State<RecordPage> {
   }
 
   Widget _amountRow(String label, TextEditingController ctl, String prefix,
-      {String? hint}) {
+      {String? hint, ValueChanged<String>? onChanged}) {
     return Container(
       constraints: const BoxConstraints(minHeight: 48),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          Flexible(
-            child: Text(label,
-                style: const TextStyle(fontSize: 15, color: IOS.textPrimary)),
-          ),
-          const Spacer(),
+          // label 不参与 flex(否则会占一份 flex 没用满, 把输入框挤到中间留右侧空白)
+          Text(label,
+              style: const TextStyle(fontSize: 15, color: IOS.textPrimary)),
+          const SizedBox(width: 12),
           if (prefix.isNotEmpty)
             Text(prefix, style: IOS.monoSize(16, color: IOS.blue)),
-          SizedBox(
-            width: 170,
+          Expanded(
             child: TextField(
               controller: ctl,
               textAlign: TextAlign.right,
@@ -335,7 +377,10 @@ class _RecordPageState extends State<RecordPage> {
                 hintText: hint,
                 hintStyle: IOS.monoSize(15, color: IOS.gray2),
               ),
-              onChanged: (_) => setState(() {}),
+              onChanged: (v) {
+                onChanged?.call(v);
+                setState(() {});
+              },
             ),
           ),
         ],
