@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="/purr-swap/">
+
+  <meta charset="UTF-8">
+  <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="pragma" content="no-cache">
+  <meta http-equiv="expires" content="0">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="USDT 多渠道比价 / 三段式记账 / 风险提示">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Purr Swap">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Purr Swap · 换金所</title>
+  <link rel="manifest" href="manifest.json">
+
+  <!-- 开屏 splash: 加载 Flutter(~3MB)期间先显示品牌猫, 避免空白白屏 -->
+  <style>
+    #purr-splash{
+      position:fixed; inset:0; z-index:99999;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      background:#FBF6F0; transition:opacity .35s ease;
+      font-family:"PingFang SC","Noto Sans SC",-apple-system,sans-serif;
+    }
+    #purr-splash img{ width:112px; height:112px; border-radius:26px;
+      box-shadow:0 8px 24px rgba(232,112,74,.18); }
+    #purr-splash .nm{ margin-top:18px; font-size:18px; font-weight:600; color:#1F2937; letter-spacing:.5px; }
+    #purr-splash .sp{ margin-top:18px; width:22px; height:22px; border-radius:50%;
+      border:2.5px solid rgba(232,112,74,.25); border-top-color:#E8704A;
+      animation:purr-spin .8s linear infinite; }
+    @keyframes purr-spin{ to{ transform:rotate(360deg); } }
+    #purr-splash.hide{ opacity:0; pointer-events:none; }
+  </style>
+</head>
+<body>
+  <div id="purr-splash">
+    <img src="icons/Icon-512.png" alt="Purr Swap">
+    <div class="nm">Purr Swap · 换金所</div>
+    <div class="sp"></div>
+  </div>
+  <script src="flutter_bootstrap.js?v=0.3.12" async></script>
+  <script>
+    (function(){
+      function hide(){ var s=document.getElementById('purr-splash');
+        if(s){ s.classList.add('hide'); setTimeout(function(){ if(s) s.remove(); }, 400); } }
+      window.addEventListener('flutter-first-frame', hide);
+      setTimeout(hide, 15000); // 兜底: 万一事件没触发也不会卡死在 splash
+    })();
+  </script>
+
+  <!-- PWA 安装条: 安卓走 beforeinstallprompt 直接拉起安装; iOS 显示手动指引 -->
+  <style>
+    #pwa-install{position:fixed;left:12px;right:12px;
+      bottom:calc(86px + env(safe-area-inset-bottom, 0px));z-index:90000;
+      background:#fff;border:1px solid #ECECEF;border-radius:14px;
+      box-shadow:0 6px 24px rgba(0,0,0,.14);padding:11px 12px;
+      display:none;align-items:center;gap:10px;
+      font-family:"PingFang SC","Noto Sans SC",-apple-system,sans-serif;}
+    #pwa-install img{width:36px;height:36px;border-radius:9px;flex:none;}
+    #pwa-install .tx{flex:1;font-size:13px;color:#1F2937;line-height:1.45;}
+    #pwa-install .tx b{color:#E8704A;}
+    #pwa-install .btn{background:#E8704A;color:#fff;border:none;border-radius:999px;
+      padding:9px 18px;font-size:13px;font-weight:600;white-space:nowrap;flex:none;}
+    #pwa-install .cl{background:none;border:none;color:#9CA3AF;font-size:20px;
+      line-height:1;padding:0 2px;flex:none;}
+  </style>
+  <div id="pwa-install">
+    <img src="icons/Icon-192.png" alt="">
+    <div class="tx" id="pwa-tx">把 <b>Purr Swap</b> 装到桌面, 像 App 一样打开</div>
+    <button class="btn" id="pwa-btn">安装</button>
+    <button class="cl" id="pwa-cl" aria-label="关闭">&times;</button>
+  </div>
+  <script>
+    (function(){
+      var deferred=null;
+      var bar=document.getElementById('pwa-install');
+      var btn=document.getElementById('pwa-btn');
+      var tx=document.getElementById('pwa-tx');
+      var cl=document.getElementById('pwa-cl');
+      function standalone(){
+        return window.matchMedia('(display-mode: standalone)').matches
+          || window.navigator.standalone===true;
+      }
+      function isIOS(){ return /iphone|ipad|ipod/i.test(navigator.userAgent)
+        || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1); }
+      try{ if(localStorage.getItem('pwa-dismissed')==='1') return; }catch(e){}
+      cl.addEventListener('click',function(){
+        bar.style.display='none'; try{localStorage.setItem('pwa-dismissed','1');}catch(e){}
+      });
+      // Android / Chromium: 满足可安装条件时触发
+      window.addEventListener('beforeinstallprompt',function(e){
+        e.preventDefault(); deferred=e;
+        if(!standalone()) bar.style.display='flex';
+      });
+      btn.addEventListener('click',async function(){
+        if(!deferred) return;
+        deferred.prompt();
+        try{ await deferred.userChoice; }catch(e){}
+        deferred=null; bar.style.display='none';
+      });
+      // iOS Safari: 不触发 beforeinstallprompt → 给手动指引
+      window.addEventListener('load',function(){
+        setTimeout(function(){
+          if(standalone()||deferred) return;
+          if(isIOS()){
+            tx.innerHTML='装到主屏: 点底部 <b>⎙ 分享</b> → <b>添加到主屏幕</b>';
+            btn.style.display='none';
+            bar.style.display='flex';
+          }
+        },2500);
+      });
+    })();
+  </script>
+<script>
+if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('flutter_service_worker.js').then(function(r){console.log('[pwa] SW registered scope',r.scope);}).catch(function(e){console.warn('[pwa] SW register failed',e);});});}
+</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+{
+    "name": "Purr Swap · 换金所",
+    "short_name": "Purr Swap",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#FBF6EF",
+    "theme_color": "#FF6B45",
+    "description": "USDT 多渠道比价 / 三段式记账 / 风险提示",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}
