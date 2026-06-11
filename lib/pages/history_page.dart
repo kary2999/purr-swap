@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../models/exchange_record.dart';
 import '../services/rate_cache.dart';
+import '../services/usdt_cny_history.dart';
 import '../storage/local_store.dart';
 import '../theme/ios_theme.dart';
 import '../widgets/ios_widgets.dart';
@@ -17,11 +18,20 @@ class HistoryPage extends StatefulWidget {
 class _HistoryPageState extends State<HistoryPage> {
   List<ExchangeRecord> _records = [];
   String _filter = '全部';
+  UsdtCnyHistory? _usdtCnyHist;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadHist();
+  }
+
+  Future<void> _loadHist() async {
+    try {
+      final h = await UsdtCnyHistory.load();
+      if (mounted) setState(() => _usdtCnyHist = h);
+    } catch (_) {}
   }
 
   Future<void> _load() async {
@@ -73,6 +83,102 @@ class _HistoryPageState extends State<HistoryPage> {
     return 7.20;
   }
 
+  // ===== ATM 取现 · USDT 折 CNY 损耗(对比当天币安 P2P 估算卖出价)=====
+  // ATM 取现是直连 USDT→CNY(无中转日元), 基准不该用 Wise/JPY, 而是"当天币安卖出价"。
+  bool _isAtm(ExchangeRecord r) =>
+      !r.isTwoHop && (r.channel.contains('Visa') || r.channel.contains('ATM'));
+
+  String _fmtLoss(double p) =>
+      '${p >= 0 ? "−" : "+"}${p.abs().toStringAsFixed(2)}%';
+
+  Color _bandColor(double lossPct) {
+    if (lossPct <= 4) return IOS.green; // 含溢价(负)与正常
+    if (lossPct <= 6) return IOS.orange;
+    return IOS.red;
+  }
+
+  String _bandLabel(double lossPct) {
+    if (lossPct <= 0) return '溢价';
+    if (lossPct <= 4) return '正常';
+    if (lossPct <= 6) return '偏高';
+    return '过高';
+  }
+
+  Widget _atmLossSection(List<ExchangeRecord> shown) {
+    final hist = _usdtCnyHist;
+    if (hist == null) return const SizedBox.shrink();
+    final atm = shown.where(_isAtm).toList()
+      ..sort((a, b) => b.at.compareTo(a.at));
+    if (atm.isEmpty) return const SizedBox.shrink();
+
+    final qs = RateCache.instance.snapshot;
+    final prem = hist.premium(qs);
+
+    final rows = <Widget>[];
+    double sumLoss = 0;
+    int n = 0;
+    for (final r in atm) {
+      if (r.usdtAmount <= 0) continue;
+      final eff = r.cnyReceived / r.usdtAmount;
+      final bench = hist.estBinanceSellAt(r.at, qs);
+      if (bench == null || bench <= 0) continue;
+      final lossPct = (bench - eff) / bench * 100; // 正=亏
+      sumLoss += lossPct;
+      n++;
+      rows.add(IOSRow(
+        leadingIcon: Icons.receipt_long_outlined,
+        iconColors: const [IOS.gray3, IOS.gray],
+        label:
+            '${DateFormat('MM-dd').format(r.at)} · ${r.usdtAmount.toStringAsFixed(0)}U → ¥${r.cnyReceived.toStringAsFixed(0)}',
+        sub: '到手 ${eff.toStringAsFixed(3)} · 币安估 ${bench.toStringAsFixed(3)}',
+        trailing: _bandTag(lossPct),
+      ));
+    }
+    if (rows.isEmpty) return const SizedBox.shrink();
+    final avg = sumLoss / n;
+
+    return IOSSection(
+      header: 'ATM 取现 · USDT 折 CNY 损耗',
+      footer: '基准 = 成交当天币安 P2P 估算卖出价'
+          '(CoinGecko 历史 × 实时溢价 ${((prem - 1) * 100).toStringAsFixed(1)}%)。'
+          '参考: ≤4% 正常 · 4–6% 偏高 · >6% 过高。估算值, 仅供参考。',
+      children: [
+        IOSRow(
+          leadingIcon: Icons.atm_outlined,
+          iconColors: const [IOS.violet, IOS.indigo],
+          label: '平均损耗',
+          sub: '$n 笔 ATM 取现',
+          trailing: Text(_fmtLoss(avg),
+              style: IOS.monoSize(16,
+                  weight: FontWeight.w700, color: _bandColor(avg))),
+        ),
+        ...rows,
+      ],
+    );
+  }
+
+  Widget _bandTag(double lossPct) {
+    final c = _bandColor(lossPct);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(_fmtLoss(lossPct),
+            style: IOS.monoSize(14, weight: FontWeight.w700, color: c)),
+        const SizedBox(width: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+          decoration: BoxDecoration(
+            color: c.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(IOS.radTag),
+          ),
+          child: Text(_bandLabel(lossPct),
+              style:
+                  TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: c)),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext c) {
     final shown = _filter == '全部'
@@ -119,6 +225,7 @@ class _HistoryPageState extends State<HistoryPage> {
             if (shown.isEmpty)
               _emptyState()
             else ...[
+              _atmLossSection(shown),
               if (shown.length >= 2) _rateTrendChart(shown),
               for (final m in sortedMonths) ...[
                 _monthHeader(m, byMonth[m]!.length),
